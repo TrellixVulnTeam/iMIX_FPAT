@@ -66,8 +66,9 @@ class Organizer:
                 self.model,
                 device_ids=[comm.get_local_rank()],
                 output_device=comm.get_local_rank(),
-                broadcast_buffers=True,
-                find_unused_parameters=cfg.find_unused_parameters)
+                find_unused_parameters=True)
+
+        self.adaptor_optimizer(cfg.optimizer)
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.scheduler = self.build_lr_scheduler(cfg, self.optimizer)
         self.checkpointer = imixCheckpointer(
@@ -113,9 +114,16 @@ class Organizer:
     def build_optimizer(cls, cfg, model):
         return build_optimizer(cfg.optimizer, model)
 
+    def adaptor_optimizer(self, optimizer):
+        if optimizer.type == 'BertAdam':
+            optimizer.t_total = len(self.train_data_loader) * self.cfg.total_epochs
+
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
-        return build_lr_scheduler(cfg.lr_config, optimizer)
+        if hasattr(cfg, 'lr_config'):
+            return build_lr_scheduler(cfg.lr_config, optimizer)
+        else:
+            return None
 
     @classmethod
     def build_train_loader(cls, cfg):
@@ -127,6 +135,16 @@ class Organizer:
 
     def build_hooks(self):
 
+        def warmup_iter():
+            if hasattr(self.cfg, 'lr_config'):
+                lr_cfg = self.cfg.lr_config
+                return lr_cfg.get('warmup_iterations', 0) if lr_cfg.get('use_warmup', False) else 0
+            else:
+                if hasattr(self.optimizer, 'warmup'):
+                    return len(self.train_data_loader) * self.cfg.total_epochs * self.optimizer.warmup
+                else:
+                    return 0
+
         cfg = self.cfg
         hook_list = []
 
@@ -137,10 +155,7 @@ class Organizer:
             hook_list.append(hooks.OptimizerHook(self.cfg.optimizer_config.grad_clip))
 
         hook_list.append(hooks.LRSchedulerHook(self.optimizer, self.scheduler))
-
-        warmup_iter = self.cfg.lr_config.get('warmup_iterations', 0) if self.cfg.lr_config.get('use_warmup',
-                                                                                               False) else 0
-        hook_list.append(hooks.IterationTimerHook(warmup_iter=warmup_iter))
+        hook_list.append(hooks.IterationTimerHook(warmup_iter=warmup_iter()))
 
         if comm.is_main_process():
             # add periodcLogger

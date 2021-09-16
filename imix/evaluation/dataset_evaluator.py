@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 import torch
 
 from .evaluator_imix import DATASET_CONVERTER
+from imix.utils.common_function import byte_tensor_to_object
 
 
 class BaseDatasetConverter(metaclass=ABCMeta):
@@ -147,147 +148,37 @@ class VisDialDatasetConverter(BaseDatasetConverter):
 
     def __init__(self, post_process_type: str):
         super().__init__(post_process_type=post_process_type)
-        self._rank_list = []
-        # self._rank_list_rnd = []
-        self.num_rounds = None
-        self.gt_option_inds = []
-        self.gt_relevance = []
-        self.gt_relevance_round_id = []
-        self._ndcg_numerator = 0.0
-        self._ndcg_denominator = 0.0
+        self.required_keys = ['sparse_metrics', 'ndcg']
 
     def __str__(self):
         return 'visdial_datasetconverter'
 
     def evaluation(self, batch_data, model_outputs, *args, **kwargs):
-        # labels = list(model_outputs['target'].split(1))
-        # predictions = list(model_outputs['scores'].split(1))
+        output = model_outputs['nsp_scores']
 
-        # nsp_probs = F.softmax(nsp_scores, dim=1)
-        # assert nsp_probs.shape[-1] == 2
-        # output.append(nsp_probs[:, 0])
-        self.gt_option_inds = batch_data['gt_option_inds']
-        self.gt_relevance = batch_data['gt_relevance']
-        self.gt_relevance_round_id = batch_data['round_id'].squeeze(1)
-        predictions = self.data_pre_process(model_outputs, *args, **kwargs)
-        labels = self.gt_option_inds
-        predictions = self.dict_to_list(predictions)
+        predictions = dict()
+        labels = dict()
+
+        def sparse_metrics(predict):
+            gt_option_inds = batch_data['gt_option_inds']
+            predictions[self.required_keys[0]] = predict
+            labels[self.required_keys[0]] = gt_option_inds
+
+        def ndcg_metirc(predict):
+            gt_relevance = batch_data['gt_relevance']
+            gt_relevance_round_id = batch_data['round_id'].squeeze(1)
+            idxs = torch.arange(predict.shape[0])
+            output = predict[idxs, gt_relevance_round_id - 1, :]
+            predictions[self.required_keys[1]] = output
+            labels[self.required_keys[1]] = gt_relevance
+
+        sparse_metrics(output)
+        ndcg_metirc(output)
+
+        predictions = [{k: v} for k, v in predictions.items()]
+        labels = [{k: v} for k, v in labels.items()]
+
         return predictions, labels
-
-    def dict_to_list(self, dict_data):
-        list_data = []
-        keys = list(dict_data.keys())
-        length = len(dict_data[keys[0]])
-
-        for l in range(0, length):
-            d = {}
-            for k in keys:
-                d[k] = 1 if k == 'ndcg_d' else dict_data[k][l]
-            list_data.append(d)
-
-        return list_data
-
-    def sparse_metrics_observe(self, predicted_scores: torch.Tensor):
-        target_ranks = self.gt_option_inds
-        predicted_scores = predicted_scores.detach()
-
-        # shape: (batch_size, num_rounds, num_options)
-        predicted_ranks = self.scores_to_ranks(predicted_scores)
-        batch_size, num_rounds, num_options = predicted_ranks.size()
-        self.num_rounds = num_rounds
-        # collapse batch dimension
-        predicted_ranks = predicted_ranks.view(batch_size * num_rounds, num_options)
-
-        # shape: (batch_size * num_rounds, )
-        target_ranks = target_ranks.view(batch_size * num_rounds).long()
-
-        # shape: (batch_size * num_rounds, )
-        predicted_gt_ranks = predicted_ranks[torch.arange(batch_size * num_rounds), target_ranks]
-        predicted_gt_ranks = predicted_gt_ranks.view(batch_size, num_rounds)
-        predicted_gt_ranks = list(predicted_gt_ranks.cpu().numpy())
-
-        return predicted_gt_ranks
-
-    # self._rank_list.extend(list(predicted_gt_ranks.cpu().numpy()))
-
-    # predicted_gt_ranks_rnd = predicted_gt_ranks.view(batch_size, num_rounds)
-    # #  predicted gt ranks
-    # self._rank_list_rnd.append(predicted_gt_ranks_rnd.cpu().numpy())
-
-    def ndcg_observe(self, predicted_scores: torch.Tensor):
-        """Observe model output scores and target ground truth relevance and
-        accumulate NDCG metric.
-
-        Parameters
-        ----------
-        predicted_scores: torch.Tensor
-            A tensor of shape (batch_size, num_options), because dense
-            annotations are available for 1 randomly picked round out of 10.
-        target_relevance: torch.Tensor
-            A tensor of shape same as predicted scores, indicating ground truth
-            relevance of each answer option for a particular round.
-        """
-        target_relevance = self.gt_relevance
-        predicted_scores = predicted_scores.detach()
-
-        # shape: (batch_size, 1, num_options)
-        predicted_scores = predicted_scores.unsqueeze(1)
-        predicted_ranks = self.scores_to_ranks(predicted_scores)
-
-        # shape: (batch_size, num_options)
-        predicted_ranks = predicted_ranks.squeeze(dim=-2)
-        batch_size, num_options = predicted_ranks.size()
-
-        k = torch.sum(target_relevance != 0, dim=-1)
-
-        # shape: (batch_size, num_options)
-        _, rankings = torch.sort(predicted_ranks, dim=-1)
-        # Sort relevance in descending order so highest relevance gets top rnk.
-        _, best_rankings = torch.sort(target_relevance, dim=-1, descending=True)
-
-        # shape: (batch_size, )
-        batch_ndcg = []
-        for batch_index in range(batch_size):
-            num_relevant = k[batch_index]
-            dcg = self._dcg(
-                rankings[batch_index][:num_relevant],
-                target_relevance[batch_index],
-            )
-            best_dcg = self._dcg(
-                best_rankings[batch_index][:num_relevant],
-                target_relevance[batch_index],
-            )
-            batch_ndcg.append(dcg / best_dcg)
-        self._ndcg_denominator = batch_size
-        # self._ndcg_numerator = sum(batch_ndcg)
-        self._ndcg_numerator = batch_ndcg
-
-        return self._ndcg_denominator, self._ndcg_numerator
-
-    def _dcg(self, rankings: torch.Tensor, relevance: torch.Tensor):
-        sorted_relevance = relevance[rankings].cpu().float()
-        discounts = torch.log2(torch.arange(len(rankings)).float() + 2)
-        return torch.sum(sorted_relevance / discounts, dim=-1)
-
-    def scores_to_ranks(self, scores: torch.Tensor):
-        """Convert model output scores into ranks."""
-        batch_size, num_rounds, num_options = scores.size()
-        scores = scores.view(-1, num_options)
-
-        # sort in descending order - largest score gets highest rank
-        sorted_ranks, ranked_idx = scores.sort(1, descending=True)
-
-        # i-th position in ranked_idx specifies which score shall take this
-        # position but we want i-th position to have rank of score at that
-        # position, do this conversion
-        ranks = ranked_idx.clone().fill_(0)
-        for i in range(ranked_idx.size(0)):
-            for j in range(num_options):
-                ranks[i][ranked_idx[i][j]] = j
-        # convert from 0-99 ranks to 1-100 ranks
-        ranks += 1
-        ranks = ranks.view(batch_size, num_rounds, num_options)
-        return ranks
 
     def submit(self, batch_data, model_outputs, *args, **kwargs):
         scores, labels = model_outputs['scores'].max(1)
@@ -304,13 +195,7 @@ class VisDialDatasetConverter(BaseDatasetConverter):
         return predictions
 
     def data_pre_process(self, model_outputs, *args, **kwargs):
-        output = model_outputs['nsp_scores']
-        _rank_list = self.sparse_metrics_observe(output)
-        output = output[torch.arange(output.size(0)), self.gt_relevance_round_id - 1, :]
-        _ndcg_denominator, _ndcg_numerator = self.ndcg_observe(output)
-        predictions = {'sparse_r': _rank_list, 'ndcg_d': _ndcg_denominator, 'ndcg_n': _ndcg_numerator}
-
-        return predictions
+        pass
 
 
 @DATASET_CONVERTER.register_module()
@@ -423,4 +308,60 @@ class CaptionBleu4Converter(BaseDatasetConverter):
         pass
 
     def predict(self, batch_data, model_outputs, *args, **kwargs):
+        pass
+
+
+@DATASET_CONVERTER.register_module()
+class TextVQADatasetConvert(BaseDatasetConverter):
+
+    def __init__(self, post_process_type: str, vocab: str):
+        super().__init__(post_process_type=post_process_type)
+        self.answer_processor_obj = self.init_text_vqa_info_cpler(vocab)
+
+    @staticmethod
+    def init_text_vqa_info_cpler(vocab):
+        from imix.data.infocomp.textvqa_infocpler import TextVQAAnswerProcessor
+        return TextVQAAnswerProcessor(vocab_file=vocab)
+
+    def __str__(self):
+        return 'text_vqa_dataset_convert'
+
+    def evaluation(self, batch_data, model_outputs, *args, **kwargs):
+        from imix.utils.third_party_libs import word_tokenize
+
+        batch_size = batch_data['context_tokens'].size(0)
+        predict_answers = model_outputs['scores'].argmax(dim=-1)
+        context_tokens = batch_data['context_tokens'].cpu().numpy()
+        answers = batch_data['answers'].cpu().numpy()
+
+        answer_space_size = self.answer_processor_obj.get_true_vocab_size()
+        predictions = []
+        labels = []
+
+        for idx in range(batch_size):
+            tokens = byte_tensor_to_object(context_tokens[idx])
+            answer_words = []
+            for answer_id in predict_answers[idx].tolist():
+                if answer_id >= answer_space_size:
+                    answer_id -= answer_space_size
+                    answer_words.append(word_tokenize(tokens[answer_id]))
+                else:
+                    if answer_id == self.answer_processor_obj.EOS_IDX:
+                        break
+                    answer_words.append(self.answer_processor_obj.answer_vocab.idx2word(answer_id))
+
+            pred_answer = ' '.join(answer_words).replace(" 's", "'s")
+            gt_answers = byte_tensor_to_object(answers[idx])
+            predictions.append(pred_answer)
+            labels.append(gt_answers)
+
+        return predictions, labels
+
+    def submit(self, batch_data, model_outputs, *args, **kwargs):
+        pass
+
+    def predict(self, batch_data, model_outputs, *args, **kwargs):
+        pass
+
+    def data_pre_process(self, model_outputs, *args, **kwargs):
         pass

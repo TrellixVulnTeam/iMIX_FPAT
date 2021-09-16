@@ -8,6 +8,7 @@ from .base_loss import BaseLoss
 
 @LOSSES.register_module()
 class DiverseLoss(BaseLoss):
+    loss_name = 'diverse_loss'
 
     def __init__(self):
         super().__init__(loss_name=str(self))
@@ -19,9 +20,6 @@ class DiverseLoss(BaseLoss):
         losses = DiverseLoss.compute_loss(predict_anchor, target_bbox)
         losses = w_div * losses
         return losses
-
-    def __str__(self):
-        return 'diverse_loss'
 
     @staticmethod
     def mask_softmax(attn_score, word_mask, tempuature=10., clssep=False, lstm=False):

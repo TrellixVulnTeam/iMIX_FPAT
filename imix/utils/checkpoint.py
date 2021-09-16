@@ -200,12 +200,14 @@ class Checkpointer:
         if incompatible_keys is not None:
             incompatible_keys.log_all_info()
 
-        if specify_load_keys is not None:
+        if specify_load_keys is not None and len(specify_load_keys):
             self.other_train_info = specify_load_keys
-        for key in self.other_train_info:
-            if key in checkpoint:
-                value = self.other_train_info[key]
-                value.load_state_dict(checkpoint.pop(key))
+
+        if specify_load_keys is None:  # resume
+            for key in self.other_train_info:
+                if key in checkpoint:
+                    value = self.other_train_info[key]
+                    value.load_state_dict(checkpoint.pop(key))
 
         return checkpoint
 
@@ -308,7 +310,7 @@ class PeriodicCheckpointer:
         file_name = None
         if (epoch + 1) % self.epoch_period == 0:
             if is_epoch:
-                file_name = '{}_epoch{}({}iters)_model'.format(prefix, epoch, kwargs.get('epoch_iter'))
+                file_name = '{}_epoch{}_model'.format(prefix, epoch)
             else:
                 file_name = '{}_epoch{}_iter{}_model'.format(prefix, epoch, kwargs.get('epoch_iter') + 1)
             self.save(file_name, **state_dict)

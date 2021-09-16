@@ -7,23 +7,29 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
-from transformers.modeling_bert import (
-    BertEmbeddings,
-    BertSelfAttention,
-    BertAttention,
-    BertEncoder,
-    BertLayer,
-    BertSelfOutput,
-    BertIntermediate,
-    BertOutput,
-    BertPooler,
-    BertPreTrainedModel,
-    BertOnlyMLMHead,
-    BertLMPredictionHead,
-    BertConfig,
-    BertModel,
-    load_tf_weights_in_bert,
-)
+from imix.utils.config import imixEasyDict
+# from transformers.modeling_bert import (
+#     BertEmbeddings,
+#     BertSelfAttention,
+#     BertAttention,
+#     BertEncoder,
+#     BertLayer,
+#     BertSelfOutput,
+#     BertIntermediate,
+#     BertOutput,
+#     BertPooler,
+#     BertPreTrainedModel,
+#     BertOnlyMLMHead,
+#     BertLMPredictionHead,
+#     BertConfig,
+#     BertModel,
+#     load_tf_weights_in_bert,
+# )
+
+from pytorch_transformers.modeling_bert import (BertEmbeddings, BertSelfAttention, BertAttention, BertEncoder,
+                                                BertLayer, BertSelfOutput, BertIntermediate, BertOutput, BertPooler,
+                                                BertPreTrainedModel, BertOnlyMLMHead, BertLMPredictionHead, BertConfig,
+                                                load_tf_weights_in_bert)
 
 from .modeling_utils import CaptionPreTrainedModel
 from ..utils.cbs import ConstrainedBeamSearch, select_best_beam_with_constraints
@@ -1101,4 +1107,16 @@ class BertImgForPreTraining(BertPreTrainedModel):
             total_loss = masked_lm_loss + next_sentence_loss
             outputs = (total_loss, ) + outputs + (masked_lm_loss, )
 
-        return outputs  # (loss), prediction_scores, seq_relationship_score, (hidden_states), (attentions)
+        if masked_lm_labels is not None and next_sentence_label is not None:
+            model_outputs = imixEasyDict()
+            model_outputs.loss = outputs[0]
+            model_outputs.outputs = outputs[1]
+            model_outputs.losses = imixEasyDict({
+                'masked_lm_loss': masked_lm_loss,
+                'next_sentence_loss': next_sentence_loss
+            })
+            return model_outputs
+        else:
+            return outputs
+
+        # return outputs  # (loss), prediction_scores, seq_relationship_score, (hidden_states), (attentions)

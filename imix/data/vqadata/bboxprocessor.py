@@ -1,4 +1,4 @@
-from imix.models.builder import EMBEDDING
+from ..builder import PROCESSOR
 from .vocabprocessor import VocabProcessor
 import torch
 from collections import OrderedDict
@@ -84,7 +84,7 @@ def build_bbox_tensors(infos, max_length):
     return sample
 
 
-@EMBEDDING.register_module()
+@PROCESSOR.register_module()
 class BBoxProcessor(VocabProcessor):
     """Generates bboxes in proper format. Takes in a dict which contains "info"
     key which is a list of dicts containing following for each of the the

@@ -44,6 +44,13 @@ def build_sampler(cfg, default_args: Optional[Dict] = None):
             logger.warning(
                 f'because world_size equal {world_size},expected DistributedSampler type,but got {sampler_type}')
             cfg.type = 'DistributedSampler'
+    elif world_size == 1:
+        sampler_type = getattr(cfg, 'type', None)
+        if sampler_type == 'DistributedSampler':
+            logger = logging.getLogger(__name__)
+            logger.warning(f'because world_size equal {world_size},and the preset sampling is {sampler_type}, '
+                           f'here it will set sampler is None')
+            return None
 
     SamplerAdaptor.adaptor(cfg=cfg, default_args=default_args)
     return build_from_cfg(cfg, SAMPLER, default_args)

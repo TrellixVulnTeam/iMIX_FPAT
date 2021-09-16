@@ -11,11 +11,14 @@ from .run_nlvr import OSCAR_NLVR
 from .datasets import OSCAR_VQADataset
 from .datasets import OSCAR_GQADataset
 from .datasets import OSCAR_NLVR2Dataset
+from .datasets import OscarPretrainDataset
 # from .datasets import OSCAR_RetrievalDataset
 # from .datasets import OSCAR_CaptioningDataset
 
 from .postprocess_evaluator import OSCAR_DatasetConverter
 from .postprocess_evaluator import OSCAR_AccuracyMetric
+
+from .modeling.oscarplus_pretrain import OscarPreTraining
 
 __all__ = [
     'OSCAR',
@@ -31,4 +34,6 @@ __all__ = [
     'OSCAR_RetrievalDataset',
     'OSCAR_DatasetConverter',
     'OSCAR_AccuracyMetric',
+    'OscarPreTraining',
+    'OscarPretrainDataset',
 ]

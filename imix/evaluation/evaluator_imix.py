@@ -88,6 +88,10 @@ class PostProcessor(metaclass=ABCMeta):
     def list_to_tensor(list_data: list) -> torch.tensor:
         # tensor_size = (len(list_data), list_data[0].shape[1])
         if not isinstance(list_data[0], dict):
+            if isinstance(list_data[0], list) or isinstance(list_data[0], str):
+                tensor_data = list_data
+                return tensor_data
+
             if len(list_data[0].shape) == 0:
                 tensor_size = (len(list_data), 1)
             elif len(list_data[0].shape) == 1:

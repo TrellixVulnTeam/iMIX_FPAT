@@ -15,7 +15,7 @@ from .loaders.textvqa_loader import TEXTVQADATASET
 from .loaders.vcr_loader import VCRDATASET
 from .loaders.visualentailment_loader import VisualEntailmentDATASET
 
-from .loaders.visual_dialog_dataset import VisDialDataset, VisdialDatasetDense
+from .loaders.visual_dialog_dataset import VisDialDataset, VisualDialogDatasetDense
 from .loaders.vqa_loader import VQADATASET
 from .loaders.vizwiz_loader import VizWizDATASET
 
@@ -37,5 +37,5 @@ __all__ = [
     'build_imix_train_loader',
     'build_imix_test_loader',
     'VisDialDataset',
-    'VisdialDatasetDense',
+    'VisualDialogDatasetDense',
 ]

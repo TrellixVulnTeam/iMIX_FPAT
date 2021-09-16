@@ -12,6 +12,8 @@ from torch.utils.data import Dataset
 from ..utils.tsv_file import TSVFile
 from ..utils.misc import load_from_yaml_file
 
+logger = logging.getLogger(__name__)
+
 
 class OscarTSVDataset(Dataset):
 
@@ -24,6 +26,7 @@ class OscarTSVDataset(Dataset):
                  corpus_lines=None,
                  on_memory=True,
                  **kwargs):
+
         self.cfg = load_from_yaml_file(yaml_file)
         self.root = os.path.dirname(yaml_file)
         self.vocab = tokenizer.vocab
@@ -54,7 +57,7 @@ class OscarTSVDataset(Dataset):
                 if key in self.datasets_names:
                     self.image_feature_path[key] = os.path.join(args.data_dir, val)
                 else:
-                    logging.info('Data {} with path {} is not used in the ' 'training.'.format(key, val))
+                    ('Data {} with path {} is not used in the ' 'training.'.format(key, val))
         self.encoding = encoding
         self.current_doc = 0  # to avoid random sentence from same doc
         self.current_img = ''  # to avoid random sentence from same image
@@ -73,7 +76,7 @@ class OscarTSVDataset(Dataset):
         self.chunk_list = None
         if 0 <= args.chunk_start_id <= args.chunk_end_id and args.chunk_end_id >= 0:
             self.chunk_list = [str(c_i) for c_i in range(args.chunk_start_id, args.chunk_end_id)]
-            logging.info('Chunk list: {}'.format(','.join(self.chunk_list)))
+            logger.info('Chunk list: {}'.format(','.join(self.chunk_list)))
 
         # load image tags and features
         t_start = time.time()
@@ -86,7 +89,7 @@ class OscarTSVDataset(Dataset):
         self.load_img_labels()
         self.load_img_tsv_features()
         t_end = time.time()
-        logging.info('Info: loading img features using {} secs'.format(t_end - t_start))
+        logger.info('Info: loading img features using {} secs'.format(t_end - t_start))
 
         # load samples into memory
         if on_memory:
@@ -126,7 +129,7 @@ class OscarTSVDataset(Dataset):
                 self.corpus_lines = self.corpus_lines + 1
                 sample = {'doc_id': len(self.all_docs), 'line': len(doc)}
                 self.sample_to_doc.append(sample)
-                assert len(row[2]) != 0, 'Text_a is empty in {} : {}'\
+                assert len(row[2]) != 0, 'Text_a is empty in {} : {}' \
                     .format(dataset_name, row[0])
                 doc.append(row[2])
                 # append text_b info
@@ -184,15 +187,14 @@ class OscarTSVDataset(Dataset):
                 if 'qa' in label_info:
                     self.all_qa_docs.append({'doc': doc, 'doc_id': len(self.all_docs)})
                 self.all_docs.append(doc)
-
             self.num_docs = len(self.all_docs)
-            logging.info('Max_tokens: {}'.format(max_tokens))
+            logger.info('Max_tokens: {}'.format(max_tokens))
         # load samples later lazily from disk
         else:
             raise ValueError('on_memory = False Not supported yet!')
 
-        logging.info('Total docs - Corpus_lines: {}-{}'.format(self.num_docs, self.corpus_lines))
-        logging.info('Total QA docs - Corpus_lines: {}'.format(len(self.all_qa_docs)))
+        logger.info('Total docs - Corpus_lines: {}-{}'.format(self.num_docs, self.corpus_lines))
+        logger.info('Total QA docs - Corpus_lines: {}'.format(len(self.all_qa_docs)))
 
     def __len__(self):
         # last line of doc won't be used, because there's no "nextSentence".
@@ -392,7 +394,7 @@ class OscarTSVDataset(Dataset):
                 if os.path.exists(img_qa_file_path):
                     self.img_qa_file[dataset_name] = TSVFile(img_qa_file_path)
                 t_e = time.time()
-                logging.info('Open image label file {}, time: {}'.format(img_label_file_path, (t_e - t_s)))
+                logger.info('Open image label file {}, time: {}'.format(img_label_file_path, (t_e - t_s)))
 
     def check_img_label_offset_map(self):
         if self.img_label_offset_map is None:
@@ -406,7 +408,7 @@ class OscarTSVDataset(Dataset):
                 if os.path.exists(img_qa_offset_map_path):
                     self.img_qa_offset_map[dataset_name] = json.load(open(img_qa_offset_map_path))
                 t_e = time.time()
-                logging.info('Load img label offset map: {}, time: {}'.format(img_label_offset_map_path, (t_e - t_s)))
+                logger.info('Load img label offset map: {}, time: {}'.format(img_label_offset_map_path, (t_e - t_s)))
 
     def get_img_labels(self, image_id):
         """decode the image labels: read the image label from the
@@ -436,7 +438,7 @@ class OscarTSVDataset(Dataset):
             self.img_feature_file = {}
             self.img_feat_offset_map = {}
             for dataset_name in self.datasets_names:
-                logging.info('* Loading dataset {}'.format(dataset_name))
+                logger.info('* Loading dataset {}'.format(dataset_name))
                 if dataset_name in self.datasets_with_splits:
                     self.img_feature_file[dataset_name] = {}
                     self.img_feat_offset_map[dataset_name] = {}
@@ -457,7 +459,7 @@ class OscarTSVDataset(Dataset):
                         for chunk_fp in chunk_file_list:
                             chunk_fp_id = chunk_fp.split('/')[-2]
                             chunk_list.append(chunk_fp_id)
-                    logging.info('* Load Image Chunks {}'.format(len(chunk_list)))
+                    logger.info('* Load Image Chunks {}'.format(len(chunk_list)))
 
                     t_s_total = time.time()
                     for chunk_fp in chunk_file_list:
@@ -469,11 +471,10 @@ class OscarTSVDataset(Dataset):
                             chunk_offsetmap)
                         self.img_feat_offset_map[dataset_name][chunk_fp_id] = json.load(open(chunk_offsetmap, 'r'))
                         t_e = time.time()
-                        logging.info('Open image chunk {}, time: {}'.format(chunk_fp_id, (t_e - t_s)))
+                        logger.info('Open image chunk {}, time: {}'.format(chunk_fp_id, (t_e - t_s)))
                     t_e_total = time.time()
-                    logging.info('Open total {} image chunks, time: {}'.format(
-                        len(chunk_list), (t_e_total - t_s_total)))
-                    logging.info('Image chunk info: {}'.format('\n'.join(chunk_file_list)))
+                    logger.info('Open total {} image chunks, time: {}'.format(len(chunk_list), (t_e_total - t_s_total)))
+                    logger.info('Image chunk info: {}'.format('\n'.join(chunk_file_list)))
                 elif dataset_name in self.datasets_with_onesplit:
                     t_s = time.time()
                     chunk_fp = os.path.join(self.image_feature_path[dataset_name], self.image_file_name)
@@ -483,7 +484,7 @@ class OscarTSVDataset(Dataset):
                         chunk_offsetmap)
                     self.img_feat_offset_map[dataset_name] = json.load(open(chunk_offsetmap, 'r'))
                     t_e = time.time()
-                    logging.info('Open dataset {}, time: {}'.format(chunk_fp, (t_e - t_s)))
+                    logger.info('Open dataset {}, time: {}'.format(chunk_fp, (t_e - t_s)))
                 else:
                     raise ValueError('Not supported dataset: {}'.format(dataset_name))
 
@@ -492,14 +493,14 @@ class OscarTSVDataset(Dataset):
         if self.img_feat_offset_map is None:
             self.img_feat_offset_map = {}
             for dataset_name in self.datasets_names:
-                logging.info('* Loading imageid2idx_map {}'.format(dataset_name))
+                logger.info('* Loading imageid2idx_map {}'.format(dataset_name))
                 if dataset_name in self.datasets_with_splits:
                     chunk_list = []
                     chunk_file_list = glob.glob(self.image_feature_path[dataset_name] + '/*/imageid2idx.json')
                     for chunk_fp in chunk_file_list:
                         chunk_fp_id = chunk_fp.split('/')[-2]
                         chunk_list.append(chunk_fp_id)
-                    logging.info('* Load Image Chunks {}'.format(len(chunk_list)))
+                    logger.info('* Load Image Chunks {}'.format(len(chunk_list)))
 
                     t_s_total = time.time()
                     for chunk_fp in chunk_file_list:
@@ -507,16 +508,15 @@ class OscarTSVDataset(Dataset):
                         t_s = time.time()
                         self.img_feat_offset_map[dataset_name][chunk_fp_id] = json.load(open(chunk_fp))
                         t_e = time.time()
-                        logging.info('Open image chunk {}, time: {}'.format(chunk_fp_id, (t_e - t_s)))
+                        logger.info('Open image chunk {}, time: {}'.format(chunk_fp_id, (t_e - t_s)))
                     t_e_total = time.time()
-                    logging.info('Open total {} image chunks, time: {}'.format(
-                        len(chunk_list), (t_e_total - t_s_total)))
+                    logger.info('Open total {} image chunks, time: {}'.format(len(chunk_list), (t_e_total - t_s_total)))
                 elif dataset_name in self.datasets_with_onesplit:
                     t_s = time.time()
                     chunk_fp = self.image_feature_path[dataset_name] + '/imageid2idx.json'
                     self.img_feat_offset_map[dataset_name] = json.load(open(chunk_fp))
                     t_e = time.time()
-                    logging.info('Open dataset {}, time: {}'.format(chunk_fp, (t_e - t_s)))
+                    logger.info('Open dataset {}, time: {}'.format(chunk_fp, (t_e - t_s)))
                 else:
                     raise ValueError('Not supported dataset: {}'.format(dataset_name))
 
@@ -745,14 +745,14 @@ def convert_example_to_features(args, example, max_seq_length, tokenizer, img_fe
     lm_label_ids = lm_label_ids + [-1] * args.max_img_seq_length
 
     if example.guid < 1:
-        logging.info('*** Example ***')
-        logging.info('guid: %s' % example.guid)
-        logging.info('tokens: %s' % ' '.join([str(x) for x in tokens]))
-        logging.info('input_ids: %s' % ' '.join([str(x) for x in input_ids]))
-        logging.info('input_mask: %s' % ' '.join([str(x) for x in input_mask]))
-        logging.info('segment_ids: %s' % ' '.join([str(x) for x in segment_ids]))
-        logging.info('LM label: %s ' % lm_label_ids)
-        logging.info('Is next sentence label: %s ' % example.is_next)
+        logger.info('*** Example ***')
+        logger.info('guid: %s' % example.guid)
+        logger.info('tokens: %s' % ' '.join([str(x) for x in tokens]))
+        logger.info('input_ids: %s' % ' '.join([str(x) for x in input_ids]))
+        logger.info('input_mask: %s' % ' '.join([str(x) for x in input_mask]))
+        logger.info('segment_ids: %s' % ' '.join([str(x) for x in segment_ids]))
+        logger.info('LM label: %s ' % lm_label_ids)
+        logger.info('Is next sentence label: %s ' % example.is_next)
 
     features = InputFeatures(
         input_ids=input_ids,

@@ -44,6 +44,12 @@ class LMDBFeatureReader(FeatureReader):
         if self.dataset_type == 'TEXTVQAREADER':
             dataset_name = img_annotation.get('set_name', None)
             img_name = img_annotation.get('image_name', None)
+
+            # the val-set comes from train-set
+            if img_annotation['image_path'].find(dataset_name) == -1:
+                image_path = img_annotation['image_path']
+                # self.logger.warning(f'{dataset_name} does not match {image_path} , it will be replaced')
+                dataset_name = image_path.split('/')[0]
             if None in [dataset_name, img_name]:
                 return None
             else:

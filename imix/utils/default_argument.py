@@ -2,6 +2,7 @@ import imix.utils.distributed_info as dist_info
 import torch
 import os
 import random
+from datetime import datetime
 from imix.utils.third_party_libs import PathManager
 
 from imix.utils.logger import setup_logger
@@ -11,6 +12,8 @@ import json
 from imix.utils.config import set_imix_work_dir, seed_all_rng
 import pprint
 import sys
+
+random.seed(datetime.now())
 
 
 def default_argument_parser(epilog=None):
@@ -32,9 +35,11 @@ def default_argument_parser(epilog=None):
             ${sys.argv[0]} --gpus 4 --config-file cfg.py --load-from /path/weight.pth  --eval-only
 
         2.Run on multiple machines:
-        (machine0)$ {sys.argv[0]} --gpus 8 --node-rank 0 --machines 2 --master-addr 'tcp://127.0.0.1' --master-port  8889 [--other-flags]
-        (machine1)$ {sys.argv[0]} --gpus 8 --node-rank 1 --machines 2 --master-addr 'tcp://127.0.0.1' --master-port  8889 [--other-flags]
-        """ # noqa
+        (machine0)$ {sys.argv[
+            0]} --gpus 8 --node-rank 0 --machines 2 --master-addr 'tcp://127.0.0.1' --master-port  8889 [--other-flags]
+        (machine1)$ {sys.argv[
+            0]} --gpus 8 --node-rank 1 --machines 2 --master-addr 'tcp://127.0.0.1' --master-port  8889 [--other-flags]
+        """  # noqa
     parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('--config-file', metavar='FILE', help='train config file path')

@@ -11,13 +11,27 @@
 }
 ```
 
+## Training
+### To train the base model
+```
+python tools/run.py --config-file configs/visual_dialog_bert/base_model_on_vqa.py --gpus 4 --load-from xxx/vqa_weights.pth
+```
+### To finetune the base model with dense annotations
+```
+python tools/run.py --config-file configs/visual_dialog_bert/ce.py --gpus 4 --load-from xxx/base_model.pth
+```
+
+### To finetune the base model with dense annotations and the next sentence prediction(NSP) loss
+```
+python tools/run.py --config-file configs/visual_dialog_bert/ce+nsp.py --gpus 4 --load-from xxx/base_model.pth
+```
 ## Results and Models
 
-|   Model   |  Style  |      NDCG      |
-| :------: | :-----: | :------------: |
-| w/cc+vqa | pytorch | 64.95%(64.94%) |
-|    CE    | pytorch | 75.24%(75.24%) |
-|  CE+NSP  | pytorch | 66.95%(69.24%) |
+|   Model   | Style   |  NDCG(iMIX) |   NDCG(paper) |
+| :------:  | :-----: | :---------: |   :---------: |
+| w/cc+vqa  | pytorch | 65.25%      |   64.94%      |
+|    CE     | pytorch | 75.78%      |   75.24%      |
+|  CE+NSP   | pytorch | 69.84%      |   69.24%      |
 
 **Notes:**
 

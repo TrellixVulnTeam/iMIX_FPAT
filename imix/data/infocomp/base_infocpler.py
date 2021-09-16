@@ -13,6 +13,7 @@ class BaseInfoCpler(object):
     def __init__(self, cfg):
         # logger = logging.getLogger(__name__)
 
+        self.cfg = cfg
         self.if_bert = cfg.if_bert
         self._init_tokens()
 
@@ -31,14 +32,12 @@ class BaseInfoCpler(object):
 
         self.fasttext_name = cfg.get('fasttext_name', 'wiki300d1m')
         self.fasttext_weights_path = self._get_atr_of_atr(cfg, 'fasttext_weights', self.fasttext_name)
+        self.fasttext_model = None
 
         self.load_glove_weights()
-        self.load_fasttext_weights()
+        # self.load_fasttext_weights()
         self.load_vocab()
         self.init_phoc()
-
-        # print('xiix')
-        # logger.info("VQAInfoCpler success")
 
     def compute_answers_scores(self, answers_indices):
         """Generate VQA based answer scores for answers_indices.
@@ -111,7 +110,7 @@ class BaseInfoCpler(object):
         return vector
 
     def load_fasttext_weights(self):
-        if self.fasttext_weights_path is None:
+        if self.fasttext_weights_path is None or self.fasttext_model is not None:
             return
         self.fasttext_model = load_model(self.fasttext_weights_path)
 

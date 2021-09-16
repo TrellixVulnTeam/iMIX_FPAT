@@ -15,3 +15,4 @@ from .hatefulememes_infocpler import HatefulMemesInfoCpler
 from .visualentailment_infocpler import VisualEntailmentInfoCpler
 
 from .lxmertpretrain_infocpler import LXMERTPreTrainInfoCpler
+from .m4c import *

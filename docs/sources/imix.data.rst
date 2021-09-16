@@ -3,6 +3,7 @@ imix.data package
 
 
 .. toctree::
+   :maxdepth: 4
 
    imix.data.infocomp
    imix.data.loaders
@@ -19,4 +20,3 @@ imix.data.builder module
    :members:
    :undoc-members:
    :show-inheritance:
-

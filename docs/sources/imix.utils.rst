@@ -2,11 +2,6 @@ imix.utils package
 ==================
 
 
-.. toctree::
-
-   imix.utils.third_party_libs
-
-
 imix.utils.Timer module
 -----------------------
 
@@ -79,10 +74,26 @@ imix.utils.distributed\_info module
    :undoc-members:
    :show-inheritance:
 
+imix.utils.download module
+--------------------------
+
+.. automodule:: imix.utils.download
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imix.utils.enable\_ouput module
 -------------------------------
 
 .. automodule:: imix.utils.enable_ouput
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+imix.utils.file\_io module
+--------------------------
+
+.. automodule:: imix.utils.file_io
    :members:
    :undoc-members:
    :show-inheritance:
@@ -135,3 +146,10 @@ imix.utils.registry module
    :undoc-members:
    :show-inheritance:
 
+imix.utils.text module
+----------------------
+
+.. automodule:: imix.utils.text
+   :members:
+   :undoc-members:
+   :show-inheritance:

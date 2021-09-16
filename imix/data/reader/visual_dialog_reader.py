@@ -103,6 +103,7 @@ class VisDiaReader(IMIXDataReader):
     def __init__(self, cfg):
         super().__init__(cfg)
         self.image_feature_max_regions = cfg.get('image_feature_max_regions', 37)
+        self.mask_img_probability = cfg.get('mask_img_probability', 0.15)
 
     def __len__(self):
         return len(self.mix_annotations)
@@ -124,7 +125,8 @@ class VisDiaReader(IMIXDataReader):
             num_boxes=num_boxes,
             boxes=boxes,
             image_target=image_target,
-            max_regions=self.image_feature_max_regions)
+            max_regions=self.image_feature_max_regions,
+            mask_prob=self.mask_img_probability)
         img_feat = {
             'image_feat': features,
             'image_loc': spatials,

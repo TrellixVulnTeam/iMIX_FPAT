@@ -1,7 +1,7 @@
 from typing import Union
-from openchat.envs import BaseEnv, TerminalEnv
+from .envs import BaseEnv, TerminalEnv
 import torch
-from .models.imagemodel import LxmertBot
+from .models.imagemodel import LxmertBot, VilbertBot, OscarBot, VinVLBot, UNITERBot
 
 
 class OpenChat(object):
@@ -40,11 +40,10 @@ class OpenChat(object):
 
         model_map = {
             'vqa_model_lxmert': LxmertBot,
-            # 'vqa_model_vilbert':VilbertBot,
-            # 'vqa_model_oscar':OscarBot,
-            # 'vqa_model_vinvl':VinvlBot,
-            # 'vqa_model_devlbert':DevlbertBot,
-            # 'vqa_model_uniter':UniterBot,
+            'vqa_model_vilbert': VilbertBot,
+            'vqa_model_oscar': OscarBot,
+            'vqa_model_vinvl': VinVLBot,
+            'vqa_model_uniter': UNITERBot,
         }
 
         vqa_model = model_map[model](
@@ -62,6 +61,5 @@ class OpenChat(object):
             'vqa_model_vilbert',
             'vqa_model_oscar',
             'vqa_model_vinvl',
-            'vqa_model_devlbert',
             'vqa_model_uniter',
         ]

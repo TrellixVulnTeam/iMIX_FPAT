@@ -3,6 +3,7 @@ imix.models package
 
 
 .. toctree::
+   :maxdepth: 4
 
    imix.models.backbones
    imix.models.combine_layers
@@ -21,4 +22,3 @@ imix.models.builder module
    :members:
    :undoc-members:
    :show-inheritance:
-

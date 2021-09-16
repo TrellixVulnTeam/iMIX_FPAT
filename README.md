@@ -6,7 +6,7 @@
 
 English | [简体中文](README_zh-CN.md)
 
-Inspur Multimodal Intelligence X (iMIX) is an open source multi-modal model building toolbox. This framework is based on the out-of-the-box design concept. It is compatible with rich multi-modal tasks, models and datasets. It is scalable, ease to use and in high performance.
+Inspur Multimodal Artificial Intelligence Framework (iMIX) is an open source multi-modal model building toolbox. This framework is based on the out-of-the-box design concept. It is compatible with rich multi-modal tasks, models and datasets. It is scalable, ease to use and in high performance.
 
 The master branch works based on PyTorch.
 

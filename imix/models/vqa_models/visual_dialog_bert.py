@@ -1,31 +1,8 @@
 import torch
 from .base_model import BaseModel
-from ..builder import VQA_MODELS  # build_embedding, build_encoder, build_head, build_pooler
+from ..builder import VQA_MODELS
 from ..visual_dialog_model.vilbert_dialog import BertForMultiModalPreTraining, BertConfig
 from imix.utils.data_utils import sequence_mask
-
-# @VQA_MODELS.register_module()
-# class VisDiaBERT(BaseModel):
-#     def __init__(self, embeddings, encoder, pooler, head, **kwargs):
-#         super().__init__()
-#         self.embeddings = build_embedding(embeddings)
-#         self.encoder = build_encoder(encoder)
-#         self.pooler = build_pooler(pooler)
-#         self.head = build_head(head,
-#                            default_args={'bert_model_embedding_weights': self.embeddings[0].word_embeddings.weight})
-#
-#     def forward_train(self, data, **kwargs):  # embeddings -> encoder -> pooler -> header
-#         embedding_out = self.embeddings(data, **kwargs)
-#         encoder_out = self.encoder(data, **kwargs)
-#         pooler_out = self.pooler(data, **kwargs)
-#         head_out = self.head(data, **kwargs)
-#         return head_out
-#
-#     def forward_test(self, data, **kwargs):
-#         pass
-#
-#     def init_bert_weights(self, module):
-#         pass
 
 
 @VQA_MODELS.register_module()
@@ -39,6 +16,7 @@ class VisDiaBERT(BaseModel):
         self.bert_pretrained.train()
 
         self.sample_size = config.sample_size
+        self.dense_options = getattr(config, 'dense_options', self.sample_size)
         self.n_gpus = config.get('n_gpus', 1)
 
         self.is_dense = config.get('is_dense', False)
@@ -122,91 +100,6 @@ class VisDiaBERT(BaseModel):
         output_nsp_scores = False
         output_lm_scores = False
 
-        # masked_lm_loss = None
-        # masked_img_loss = None
-        # nsp_loss = None
-        # prediction_scores_t = None
-        # seq_relationship_score = None
-        #
-        # nsp_loss = None
-        # lm_loss = None
-        # loss = None
-        # lm_scores = None
-        # nsp_scores = None
-        # img_loss = None
-
-        # if output_nsp_scores and output_lm_scores:
-        #     lm_loss, img_loss, nsp_loss, nsp_scores, lm_scores = self.model(tokens,
-        #                                                                     features,
-        #                                                                     spatials,
-        #                                                                     sep_indices=sep_indices,
-        #                                                                     sep_len=sep_len,
-        #                                                                     token_type_ids=segments,
-        #                                                                     masked_lm_labels=mask,
-        #                                                                     attention_mask=attention_mask_lm_nsp,
-        #                                                                     next_sentence_label=next_sentence_labels,
-        #                                                                     output_nsp_scores=output_nsp_scores,
-        #                                                                     output_lm_scores=output_lm_scores,
-        #                                                                     image_attention_mask=image_mask,
-        #                                                                     image_label=image_label,
-        #                                                                     image_target=image_target)
-        # elif output_nsp_scores and not output_lm_scores:
-        #     lm_loss, img_loss, nsp_loss, nsp_scores = self.model(tokens,
-        #                                                          features,
-        #                                                          spatials,
-        #                                                          sep_indices=sep_indices,
-        #                                                          sep_len=sep_len,
-        #                                                          token_type_ids=segments,
-        #                                                          masked_lm_labels=mask,
-        #                                                          attention_mask=attention_mask_lm_nsp,
-        #                                                          next_sentence_label=next_sentence_labels,
-        #                                                          output_nsp_scores=output_nsp_scores,
-        #                                                          output_lm_scores=output_lm_scores,
-        #                                                          image_attention_mask=image_mask,
-        #                                                          image_label=image_label,
-        #                                                          image_target=image_target)
-        # elif output_lm_scores and not output_nsp_scores:
-        #     lm_loss, img_loss, nsp_loss, lm_scores = self.model(tokens,
-        #                                                         features,
-        #                                                         spatials,
-        #                                                         sep_indices=sep_indices,
-        #                                                         sep_len=sep_len,
-        #                                                         token_type_ids=segments,
-        #                                                         masked_lm_labels=mask,
-        #                                                         attention_mask=attention_mask_lm_nsp,
-        #                                                         next_sentence_label=next_sentence_labels,
-        #                                                         output_nsp_scores=output_nsp_scores,
-        #                                                         output_lm_scores=output_lm_scores,
-        #                                                         image_attention_mask=image_mask,
-        #                                                         image_label=image_label,
-        #                                                         image_target=image_target)
-        # else:
-        #     lm_loss, img_loss, nsp_loss = self.forward1(tokens, features, spatials, sep_indices=sep_indices,
-        #                                                 sep_len=sep_len,
-        #                                                 token_type_ids=segments, masked_lm_labels=mask,
-        #                                                 attention_mask=attention_mask_lm_nsp,
-        #                                                 next_sentence_label=next_sentence_labels,
-        #                                                 output_nsp_scores=output_nsp_scores,
-        #                                                 output_lm_scores=output_lm_scores,
-        #                                                 image_attention_mask=image_mask,
-        #                                                 image_label=image_label,
-        #                                                 image_target=image_target)
-        #
-        # lm_loss = lm_loss.mean()
-        # nsp_loss = nsp_loss.mean()
-        # img_loss = img_loss.mean()
-        # # loss = (params['lm_loss_coeff'] * lm_loss) + (params['nsp_loss_coeff'] * nsp_loss) + \
-        # #        (params['img_loss_coeff'] * img_loss)
-        #
-        # if output_nsp_scores and output_lm_scores:
-        #     return loss, lm_loss, nsp_loss, img_loss, nsp_scores, lm_scores
-        # elif output_nsp_scores and not output_lm_scores:
-        #     return loss, lm_loss, nsp_loss, img_loss, nsp_scores
-        # elif not output_nsp_scores and output_lm_scores:
-        #     return loss, lm_loss, nsp_loss, img_loss, lm_scores
-        # else:
-        #     return loss, lm_loss, nsp_loss, img_loss
-
         return self._forward(
             tokens,
             features,
@@ -225,7 +118,9 @@ class VisDiaBERT(BaseModel):
 
     def dense_process_image_data(self, data):
         num_rounds = data['tokens'].shape[1]
-        num_samples = self.sample_size
+        num_samples = data['tokens'].shape[2]
+        if self.dense_options is None:
+            num_samples = self.dense_options
         orig_features = data['image_feat']
         orig_spatials = data['image_loc']
         orig_image_mask = data['image_mask']
@@ -265,7 +160,7 @@ class VisDiaBERT(BaseModel):
 
         gt_option_ind = batch['gt_option'].item()
         all_inds_minus_gt = torch.cat([torch.arange(gt_option_ind), torch.arange(gt_option_ind + 1, 100)], 0)
-        all_inds_minus_gt = all_inds_minus_gt[torch.randperm(99)[:self.sample_size - 1]]
+        all_inds_minus_gt = all_inds_minus_gt[torch.randperm(99)[:self.dense_options - 1]]
 
         gt = batch['gt_option'].view(-1)
         other_option = all_inds_minus_gt.to(gt.device)
@@ -356,91 +251,6 @@ class VisDiaBERT(BaseModel):
         attention_mask_lm_nsp = sequence_mask(sequence_lengths, max_len=tokens.shape[1])
         sep_len = hist_len + 1
 
-        # masked_lm_loss = None
-        # masked_img_loss = None
-        # nsp_loss = None
-        # prediction_scores_t = None
-        # seq_relationship_score = None
-        #
-        # nsp_loss = None
-        # lm_loss = None
-        # loss = None
-        # lm_scores = None
-        # nsp_scores = None
-        # img_loss = None
-
-        # if output_nsp_scores and output_lm_scores:
-        #     lm_loss, img_loss, nsp_loss, nsp_scores, lm_scores = self.model(tokens,
-        #                                                                     features,
-        #                                                                     spatials,
-        #                                                                     sep_indices=sep_indices,
-        #                                                                     sep_len=sep_len,
-        #                                                                     token_type_ids=segments,
-        #                                                                     masked_lm_labels=mask,
-        #                                                                     attention_mask=attention_mask_lm_nsp,
-        #                                                                     next_sentence_label=next_sentence_labels,
-        #                                                                     output_nsp_scores=output_nsp_scores,
-        #                                                                     output_lm_scores=output_lm_scores,
-        #                                                                     image_attention_mask=image_mask,
-        #                                                                     image_label=image_label,
-        #                                                                     image_target=image_target)
-        # elif output_nsp_scores and not output_lm_scores:
-        #     lm_loss, img_loss, nsp_loss, nsp_scores = self.model(tokens,
-        #                                                          features,
-        #                                                          spatials,
-        #                                                          sep_indices=sep_indices,
-        #                                                          sep_len=sep_len,
-        #                                                          token_type_ids=segments,
-        #                                                          masked_lm_labels=mask,
-        #                                                          attention_mask=attention_mask_lm_nsp,
-        #                                                          next_sentence_label=next_sentence_labels,
-        #                                                          output_nsp_scores=output_nsp_scores,
-        #                                                          output_lm_scores=output_lm_scores,
-        #                                                          image_attention_mask=image_mask,
-        #                                                          image_label=image_label,
-        #                                                          image_target=image_target)
-        # elif output_lm_scores and not output_nsp_scores:
-        #     lm_loss, img_loss, nsp_loss, lm_scores = self.model(tokens,
-        #                                                         features,
-        #                                                         spatials,
-        #                                                         sep_indices=sep_indices,
-        #                                                         sep_len=sep_len,
-        #                                                         token_type_ids=segments,
-        #                                                         masked_lm_labels=mask,
-        #                                                         attention_mask=attention_mask_lm_nsp,
-        #                                                         next_sentence_label=next_sentence_labels,
-        #                                                         output_nsp_scores=output_nsp_scores,
-        #                                                         output_lm_scores=output_lm_scores,
-        #                                                         image_attention_mask=image_mask,
-        #                                                         image_label=image_label,
-        #                                                         image_target=image_target)
-        # else:
-        #     lm_loss, img_loss, nsp_loss = self.forward1(tokens, features, spatials, sep_indices=sep_indices,
-        #                                                 sep_len=sep_len,
-        #                                                 token_type_ids=segments, masked_lm_labels=mask,
-        #                                                 attention_mask=attention_mask_lm_nsp,
-        #                                                 next_sentence_label=next_sentence_labels,
-        #                                                 output_nsp_scores=output_nsp_scores,
-        #                                                 output_lm_scores=output_lm_scores,
-        #                                                 image_attention_mask=image_mask,
-        #                                                 image_label=image_label,
-        #                                                 image_target=image_target)
-        #
-        # lm_loss = lm_loss.mean()
-        # nsp_loss = nsp_loss.mean()
-        # img_loss = img_loss.mean()
-        # # loss = (params['lm_loss_coeff'] * lm_loss) + (params['nsp_loss_coeff'] * nsp_loss) + \
-        # #        (params['img_loss_coeff'] * img_loss)
-        #
-        # if output_nsp_scores and output_lm_scores:
-        #     return loss, lm_loss, nsp_loss, img_loss, nsp_scores, lm_scores
-        # elif output_nsp_scores and not output_lm_scores:
-        #     return loss, lm_loss, nsp_loss, img_loss, nsp_scores
-        # elif not output_nsp_scores and output_lm_scores:
-        #     return loss, lm_loss, nsp_loss, img_loss, lm_scores
-        # else:
-        #     return loss, lm_loss, nsp_loss, img_loss
-
         model_output = self._forward(
             tokens,
             features,
@@ -466,15 +276,12 @@ class VisDiaBERT(BaseModel):
     def forward_train(self, data, **kwargs):
         if self.is_dense:
             batch = self.dense_process_image_data(data)
-            return self.dense_convert(batch, sample_size=self.sample_size, evaluation=False, output_nsp_scores=True)
+            return self.dense_convert(batch, sample_size=None, evaluation=False, output_nsp_scores=True)
         else:
             batch = self.preprocess_data(data)
             return self.convert(batch, sample_size=self.sample_size)
 
     def forward_test(self, data, **kwargs):
-        # gt_option_inds = data['gt_option_inds']
-        # gt_relevance = data['gt_relevance']
-        # gt_relevance_round_id = data['round_id'].squeeze(1)
         eval_batch_size = len(data['image_id'])
         num_rounds, num_options = data['tokens'].shape[1], data['tokens'].shape[2]
         # we can fit approximately 500 sequences of length 256 in 8 gpus with 12 GB of memory during inference.
@@ -528,38 +335,6 @@ class VisDiaBERT(BaseModel):
                  image_attention_mask=None,
                  image_label=None,
                  image_target=None):
-
-        # masked_lm_loss = None
-        # masked_img_loss = None
-        # nsp_loss = None
-        # prediction_scores_t = None
-        # seq_relationship_score = None
-
-        # if next_sentence_label is not None and masked_lm_labels \
-        #         is not None and image_target is not None:
-        #     # train mode, output losses
-        #     masked_lm_loss, masked_img_loss, nsp_loss, _, prediction_scores_t, seq_relationship_score = \
-        #         self.model(input_ids, image_feat, image_loc, sep_indices=sep_indices, sep_len=sep_len,
-        #                    token_type_ids=token_type_ids, attention_mask=attention_mask,
-        #                    masked_lm_labels=masked_lm_labels,
-        #                    next_sentence_label=next_sentence_label, image_attention_mask=image_attention_mask,
-        #                    image_label=image_label, image_target=image_target)
-        # else:
-        #     # inference, output scores
-        #     prediction_scores_t, _, seq_relationship_score, _, _ = \
-        #         self.model(input_ids, image_feat, image_loc, sep_indices=sep_indices, sep_len=sep_len, \
-        #                    token_type_ids=token_type_ids, attention_mask=attention_mask,
-        #                    masked_lm_labels=masked_lm_labels, \
-        #                    next_sentence_label=next_sentence_label, image_attention_mask=image_attention_mask, \
-        #                    image_label=image_label, image_target=image_target)
-        #
-        # out = (masked_lm_loss, masked_img_loss, nsp_loss)
-        #
-        # if output_nsp_scores:
-        #     out = out + (seq_relationship_score,)
-        # if output_lm_scores:
-        #     out = out + (prediction_scores_t,)
-        # return out
 
         model_output = self.bert_pretrained(
             input_ids,
@@ -622,9 +397,6 @@ class VisDiaBERT(BaseModel):
         mask = mask.view(-1, mask.shape[-1])
         hist_len = batch['hist_len']
         hist_len = hist_len.view(-1)
-        # gt_option_inds = batch['gt_option_inds']
-        # gt_relevance = batch['gt_relevance']
-        # gt_relevance_round_id = batch['round_id'].squeeze(1)
 
         # get image features
         features = batch['image_feat']

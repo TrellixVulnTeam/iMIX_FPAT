@@ -5,7 +5,7 @@ from functools import lru_cache
 
 import torch
 from .builder import LR_SCHEDULERS
-from torch.optim.lr_scheduler import LambdaLR, _LRScheduler
+from torch.optim.lr_scheduler import LambdaLR, _LRScheduler, ReduceLROnPlateau
 from .optimization import BertAdam
 import imix.utils.distributed_info as comm
 import logging
@@ -45,8 +45,8 @@ class WarmupMultiStepLR(_LRScheduler):
         super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> List[float]:
-        warmup_factor = _get_warmup_factor_at_iter(self.warmup_method, self.last_epoch, self.warmup_iters,
-                                                   self.warmup_factor)
+        warmup_factor = WarmupCosineLR.get_warmup_factor_at_iter(self.warmup_method, self.last_epoch, self.warmup_iters,
+                                                                 self.warmup_factor)
 
         @lru_cache
         def calculate_lr(base_lr):
@@ -59,7 +59,7 @@ class WarmupMultiStepLR(_LRScheduler):
 
 
 @LR_SCHEDULERS.register_module()
-class ReduceOnPlateauSchedule(torch.optim.lr_scheduler.ReduceLROnPlateau):
+class ReduceOnPlateauSchedule(ReduceLROnPlateau):
 
     def __init__(self, optimizer: torch.optim.Optimizer, **kwargs):
         self.factor = kwargs['factor']
@@ -99,8 +99,8 @@ class WarmupCosineLR(_LRScheduler):
         super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> List[float]:
-        warmup_factor = _get_warmup_factor_at_iter(self.warmup_method, self.last_epoch, self.warmup_iters,
-                                                   self.warmup_factor)
+        warmup_factor = self.get_warmup_factor_at_iter(self.warmup_method, self.last_epoch, self.warmup_iters,
+                                                       self.warmup_factor)
 
         @lru_cache
         def calculate_lr(base_lr):
@@ -111,17 +111,60 @@ class WarmupCosineLR(_LRScheduler):
     def _compute_values(self) -> List[float]:
         return self.get_lr()
 
+    @staticmethod
+    def get_warmup_factor_at_iter(method: str, iter: int, warmup_iters: int, warmup_factor: float) -> float:
+        """Return the learning rate warmup factor at a specific iteration. See
+        :paper:`in1k1h` for more details.
+
+        Args:
+            method (str): warmup method; either "constant" or "linear".
+            iter (int): iteration at which to calculate the warmup factor.
+            warmup_iters (int): the number of warmup iterations.
+            warmup_factor (float): the base warmup factor (the meaning changes according
+                to the method used).
+
+        Returns:
+            float: the effective warmup factor at the given iteration.
+        """
+        if iter >= warmup_iters:
+            return 1.0
+        support_method = ['constant', 'linear']
+
+        def constant_method():
+            return warmup_factor
+
+        def linear_method():
+            alpha = iter / warmup_iters
+            return warmup_factor * (1 - alpha) + alpha
+
+        if method in support_method:
+            return eval(method + '_method')()
+        else:
+            raise ValueError('Unknown warmup method: {}'.format(method))
+
 
 @LR_SCHEDULERS.register_module()
 class PythiaScheduler(LambdaLR):
 
     def __init__(self, optimizer, *args, **kwargs):
-        self._lambda_func = lr_lambda_update
+        self._lambda_func = PythiaScheduler.lr_lambda_update
 
+        from imix.utils.config import imixEasyDict
+        self._global_config = imixEasyDict({'lr_config': {k: v for k, v in kwargs.items()}})
+        kwargs = {}
         super().__init__(optimizer, self.lr_lambda, *args, **kwargs)
 
     def lr_lambda(self, step):
         return self._lambda_func(step, self._global_config)
+
+    @staticmethod
+    def lr_lambda_update(i_iter, cfg):
+        if cfg.lr_config.use_warmup is True and i_iter <= cfg.lr_config.warmup_iterations:
+            alpha = float(i_iter) / float(cfg.lr_config.warmup_iterations)
+            return cfg.lr_config.warmup_factor * (1.0 - alpha) + alpha
+        else:
+            idx = bisect(cfg.lr_config.lr_steps, i_iter)
+            return pow(cfg.lr_config.lr_ratio, idx)
 
 
 @LR_SCHEDULERS.register_module()
@@ -178,83 +221,8 @@ class WarmupLinearScheduleNonZero(_LRScheduler):
         ]
 
 
-def _get_warmup_factor_at_iter(method: str, iter: int, warmup_iters: int, warmup_factor: float) -> float:
-    """Return the learning rate warmup factor at a specific iteration. See
-    :paper:`in1k1h` for more details.
-
-    Args:
-        method (str): warmup method; either "constant" or "linear".
-        iter (int): iteration at which to calculate the warmup factor.
-        warmup_iters (int): the number of warmup iterations.
-        warmup_factor (float): the base warmup factor (the meaning changes according
-            to the method used).
-
-    Returns:
-        float: the effective warmup factor at the given iteration.
-    """
-    if iter >= warmup_iters:
-        return 1.0
-    support_method = ['constant', 'linear']
-
-    def constant_method():
-        return warmup_factor
-
-    def linear_method():
-        alpha = iter / warmup_iters
-        return warmup_factor * (1 - alpha) + alpha
-
-    if method in support_method:
-        return eval(method + '_method')()
-    else:
-        raise ValueError('Unknown warmup method: {}'.format(method))
-
-
-def lr_lambda_update(i_iter, cfg):
-    if cfg.training.use_warmup is True and i_iter <= cfg.training.warmup_iterations:
-        alpha = float(i_iter) / float(cfg.training.warmup_iterations)
-        return cfg.training.warmup_factor * (1.0 - alpha) + alpha
-    else:
-        idx = bisect(cfg.training.lr_steps, i_iter)
-        return pow(cfg.training.lr_ratio, idx)
-
-
-def warmup_cosine(x, warmup=0.002):
-    if x < warmup:
-        return x / warmup
-    return 0.5 * (1.0 + torch.cos(math.pi * x))
-
-
-def warmup_constant(x, warmup=0.002):
-    """Linearly increases learning rate over `warmup`*`t_total` (as provided to
-    BertAdam) training steps.
-
-    Learning rate is 1. afterwards.
-    """
-    if x < warmup:
-        return x / warmup
-    return 1.0
-
-
-def warmup_linear(x, warmup=0.002):
-    """Specifies a triangular learning rate schedule where peak is reached at
-    `warmup`*`t_total`-th (as provided to BertAdam) training step.
-
-    After `t_total`-th training step, learning rate is zero.
-    """
-    if x < warmup:
-        return x / warmup
-    return max((x - 1.) / (warmup - 1.), 0)
-
-
-SCHEDULES = {
-    'warmup_cosine': warmup_cosine,
-    'warmup_constant': warmup_constant,
-    'warmup_linear': warmup_linear,
-}
-
-
 @LR_SCHEDULERS.register_module()
-class BertWarmupLinearLR(torch.optim.lr_scheduler._LRScheduler):
+class BertWarmupLinearLR(_LRScheduler):
     """Implements BERT version of Warmup Linear lr algorithm
   Params:
       warmup: portion of t_total for the warmup, -1  means no warmup. Default: -1
@@ -262,6 +230,11 @@ class BertWarmupLinearLR(torch.optim.lr_scheduler._LRScheduler):
           rate schedule, -1  means constant learning rate. Default: -1
       schedule: schedule to use for the warmup (see above). Default: 'warmup_linear'
   """
+    SCHEDULES = [
+        'warmup_cosine',
+        'warmup_constant',
+        'warmup_linear',
+    ]
 
     def __init__(
         self,
@@ -271,7 +244,7 @@ class BertWarmupLinearLR(torch.optim.lr_scheduler._LRScheduler):
         warmup_method: str = 'warmup_linear',
         last_epoch: int = -1,
     ):
-        if warmup_method not in SCHEDULES:
+        if warmup_method not in self.SCHEDULES:
             raise ValueError('Invalid schedule parameter: {}'.format(warmup_method))
         if not 0.0 <= warmup < 1.0 and not warmup == -1:
             raise ValueError('Invalid warmup: {} - should be in [0.0, 1.0[ or -1'.format(warmup))
@@ -287,7 +260,7 @@ class BertWarmupLinearLR(torch.optim.lr_scheduler._LRScheduler):
             if comm.is_main_process():
                 logger = logging.getLogger(__name__)
 
-            schedule_fct = SCHEDULES[self.warmup_method]
+            schedule_fct = getattr(self, self.warmup_method)
             progress = self.last_epoch / self.max_iters
             lr_cur = [base_lr * schedule_fct(progress, self.warmup) for base_lr in self.base_lrs]
             # warning for exceeding t_total (only active with warmup_linear
@@ -310,8 +283,34 @@ class BertWarmupLinearLR(torch.optim.lr_scheduler._LRScheduler):
         return lr_cur
 
     def _compute_values(self) -> List[float]:
-        # The new interface
         return self.get_lr()
+
+    @staticmethod
+    def warmup_cosine(x, warmup=0.002):
+        if x < warmup:
+            return x / warmup
+        return 0.5 * (1.0 + torch.cos(math.pi * x))
+
+    @staticmethod
+    def warmup_constant(x, warmup=0.002):
+        """Linearly increases learning rate over `warmup`*`t_total` (as
+        provided to BertAdam) training steps.
+
+        Learning rate is 1. afterwards.
+        """
+
+        return x / warmup if x < warmup else 1.0
+
+    @staticmethod
+    def warmup_linear(x, warmup=0.002):
+        """Specifies a triangular learning rate schedule where peak is reached
+        at `warmup`*`t_total`-th (as provided to BertAdam) training step.
+
+        After `t_total`-th training step, learning rate is zero.
+        """
+        if x < warmup:
+            return x / warmup
+        return max((x - 1.) / (warmup - 1.), 0)
 
 
 @LR_SCHEDULERS.register_module()

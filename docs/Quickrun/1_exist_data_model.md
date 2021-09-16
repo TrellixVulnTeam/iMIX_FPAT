@@ -10,7 +10,7 @@ iMIX provides multiple existing  models in [Model Zoo](../getstart/model_zoo.md)
 
 We provide a visual interface which can show the inference process and result intuitively, use the VQA task (read text in images and answer questions) as an example.
 
-The demo inference with the existing trained models(i.e. LXMERT model) and the operating procedures are as follows:
+The demo inference with the existing trained models(i.e.  LXMERT model) and the operating procedures are as follows:
 
 1. download the pretrained model weight file of LXMERT [here](https://mega.nz/file/OW5GEIxb#TeXyG2OhV8ZoQ2ESGZOyhONlK0B9p0qwG4bBSkyIX0c) and put it in the directory `imix/openchat/openchat/model_pth/`；
 
@@ -42,7 +42,7 @@ The demo inference with the existing trained models(i.e. LXMERT model) and the o
 
 ## Test existing models on existing datasets
 
-iMIX provides multiple existing models in [Model Zoo](../getstart/model_zoo.md), use [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert) as an example. LXMERT support three downstream tasks, choose VQA as an example. Before test the LXMERT model on VQA task, you should do the following two steps:
+iMIX provides multiple existing models in [Model Zoo](../getstart/model_zoo.md), use [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert/LXMERT.md) as an example. LXMERT support three downstream tasks, choose VQA as an example. Before test the LXMERT model on VQA task, you should do the following two steps:
 
 - download the necessary data file according to the source code paper;
 - download the existing model pth file according to the LXMERT readme.
@@ -51,7 +51,7 @@ iMIX provides multiple existing models in [Model Zoo](../getstart/model_zoo.md),
 
 In iMIX, we directly use the  extracted feature files refer to the source code paper. The steps are as follows:
 
-- Download the feature and annotation files like `train.json`, `trainval_ans2label.json`, `train2014_obj36.tsv` and so on. You can download the data file according to the original paper or source code of [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert);
+- Download the feature and annotation files like `train.json`, `trainval_ans2label.json`, `train2014_obj36.tsv` and so on. You can download the data file according to the original paper or source code of [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert/LXMERT.md);
 
 - put all those files outside the project directory and symlink the dataset root to `imix/configs/_base_/datasets/lxmert/lxmert_vqa.py` as below;
 

@@ -2,22 +2,11 @@ import os
 import warnings
 from torch import distributed as dist
 import torch
-from mmcv.utils import Registry, build_from_cfg
 import numpy as np
-from imix.models.builder import EMBEDDING
+from ..builder import PROCESSOR
 from .vocabprocessor import VocabProcessor
 from imix.utils.third_party_libs import PathManager
 from imix.utils.config import get_imix_cache_dir
-
-VOCAB = Registry('vocab')
-
-
-def build_vocab(cfg):
-    """Build vocab."""
-    return build_from_cfg(cfg, VOCAB)
-
-
-PREPROCESSOR = Registry('preprocessor')
 
 
 def synchronize():
@@ -36,11 +25,6 @@ def synchronize():
     dist.barrier()
 
 
-def build_preprocessor(cfg):
-    """Build preprocessor."""
-    return build_from_cfg(cfg, PREPROCESSOR)
-
-
 class WordToVectorDict:
 
     def __init__(self, model):
@@ -51,7 +35,7 @@ class WordToVectorDict:
         return np.mean([self.model.get_word_vector(w) for w in word.split(' ')], axis=0)
 
 
-@EMBEDDING.register_module()
+@PROCESSOR.register_module()
 class FastTextProcessor(VocabProcessor):
     """FastText processor, similar to GloVe processor but returns FastText
     vectors.
@@ -63,6 +47,7 @@ class FastTextProcessor(VocabProcessor):
     def __init__(self, max_length, model_file, *args, **kwargs):
         # self._init_extras(config)
         # self.config = config
+        self.max_length = max_length
         self.model_file = model_file
         # self._download_initially = config.get('download_initially', True)
         self._download_initially = False
@@ -151,12 +136,12 @@ class FastTextProcessor(VocabProcessor):
 
         from fasttext import load_model
 
-        self.writer.write('Loading fasttext model now from %s' % model_file)
+        # self.writer.write('Loading fasttext model now from %s' % model_file)
 
         self.model = load_model(model_file)
         # String to Vector
         self.stov = WordToVectorDict(self.model)
-        self.writer.write('Finished loading fasttext model')
+        # self.writer.write('Finished loading fasttext model')
 
         self._already_loaded = True
 

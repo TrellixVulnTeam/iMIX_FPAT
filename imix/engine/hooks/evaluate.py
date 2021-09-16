@@ -13,6 +13,7 @@ import copy
 from imix.utils.config import get_imix_work_dir
 from .periods.checkpoint import CheckPointHook
 from imix.utils.distributed_info import master_only_run
+from dataclasses import dataclass
 
 
 @HOOKS.register_module()
@@ -39,6 +40,8 @@ class EvaluateHook(HookBase):
         self._func = eval_function
         self._file_handle = PathManager.open(os.path.join(get_imix_work_dir(), eval_json_file), 'w')
         self._all_eval_results = []
+
+        self.mulit_metircs_dataset_type = ['VisDialDataset']
 
     def _do_eval(self):
         results = self._func()
@@ -114,6 +117,7 @@ class EvaluateHook(HookBase):
         self._file_handle.write(json.dumps(data, sort_keys=False) + '\n')
         self._file_handle.flush()
 
+        self.mulit_metircs_process(data)
         try:
             os.fsync(self._file_handle.fileno())
         except AttributeError:
@@ -190,3 +194,22 @@ class EvaluateHook(HookBase):
         model_best_name = 'model_best.pth'
         logger.info('Saving the best model checkpoint to {}'.format(model_best_name))
         torch.save(model, absolute_path(model_best_name))
+
+    def mulit_metircs_process(self, single_eval_info: dict):
+        dataset_type = self.trainer.cfg.test_data.data.type
+        if dataset_type in self.mulit_metircs_dataset_type:
+            key = [k for k in list(single_eval_info.keys()) if k.find('metric') != -1]
+            instance = eval(f'{dataset_type}Metric()')
+            for k in key:
+                metric_info = single_eval_info[k]
+                single_eval_info[k] = metric_info[instance.metric_name]
+
+
+@dataclass
+class MultiMetricDataset:
+    metric_name: str = None  # the most important metric name
+
+
+@dataclass
+class VisDialDatasetMetric(MultiMetricDataset):
+    metric_name: str = 'ndcg'

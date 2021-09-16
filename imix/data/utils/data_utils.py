@@ -24,15 +24,13 @@ def batch_iter(dataloader, params):
 
 
 def list2tensorpad(inp_list, max_seq_len):
+    if len(inp_list) > max_seq_len:
+        inp_list = inp_list[:max_seq_len]
+
     inp_tensor = torch.LongTensor([inp_list])
     inp_tensor_zeros = torch.zeros(1, max_seq_len, dtype=torch.long)
-    try:
-        inp_tensor_zeros[0, :inp_tensor.shape[1]] = inp_tensor
-        inp_tensor = inp_tensor_zeros
-    except Exception as e:
-        torch.save(inp_tensor, 'inp_tensor')
-        torch.save(inp_tensor_zeros, 'inp_tensor_zeros')
-        raise e
+    inp_tensor_zeros[0, :inp_tensor.shape[1]] = inp_tensor
+    inp_tensor = inp_tensor_zeros
     return inp_tensor
 
 

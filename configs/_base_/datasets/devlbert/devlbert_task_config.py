@@ -1,6 +1,6 @@
 data_root = '/home/datasets/mix_data/DeVLBert/'
 
-task_ids = '1'  # '1-2-3...' training task separate by -
+task_ids = '4'  # '1-2-3...' training task separate by -
 
 TASKS = dict(
     TASK1=dict(
@@ -49,7 +49,7 @@ TASKS = dict(
         val_split='val',
         num_labels=1,
         lr=0.00002,
-        per_gpu_train_batch_size=16,
+        per_gpu_train_batch_size=2,  # 16
         per_gpu_eval_batch_size=16,
         iters_in_epoch=13308,
         num_warmup_steps=13308,
@@ -105,7 +105,7 @@ TASKS = dict(
         val_split='val',
         num_labels=1,
         lr=0.00002,
-        per_gpu_train_batch_size=64,
+        per_gpu_train_batch_size=64,  # 64
         per_gpu_eval_batch_size=64,
         iters_in_epoch=470,  # need verified
         num_warmup_steps=2196,

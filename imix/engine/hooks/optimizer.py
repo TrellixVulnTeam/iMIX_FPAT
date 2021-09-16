@@ -12,6 +12,8 @@ class OptimizerHook(HookBase):
         super().__init__()
         self._grad_clip = grad_clip
         self._level = PriorityStatus.HIGH
+        self._user_scale = False if self._grad_clip is None else getattr(self._grad_clip, 'use_scale', False)
+        self._scaler = GradScaler(enabled=False) if self._user_scale else None
 
     def _clip_grad_norm(self) -> None:
         clip_norm_params = list(
@@ -19,7 +21,12 @@ class OptimizerHook(HookBase):
         if len(clip_norm_params) == 0:
             return
         else:
-            grad_norm = clip_grad.clip_grad_norm_(clip_norm_params, **self._grad_clip)
+            if hasattr(self._grad_clip, 'clip_norm_mode'):
+                scale = self._scaler.get_scale() if self._user_scale else 1.0
+                max_norm = self._grad_clip.max_grad_l2_norm * scale
+                grad_norm = clip_grad.clip_grad_norm(clip_norm_params, max_norm)
+            else:
+                grad_norm = clip_grad.clip_grad_norm_(clip_norm_params, **self._grad_clip)
             self.trainer.log_buffer.put_scalar('grad_norm', float(grad_norm))
 
     def after_train_iter(self):
@@ -29,7 +36,11 @@ class OptimizerHook(HookBase):
             self._clip_grad_norm()
 
         if (self.trainer.iter + 1) % self.trainer.gradient_accumulation_steps == 0:
-            self.trainer.optimizer.step()
+            if self._user_scale:
+                self._scaler.step(self.trainer.optimizer)
+                self._scaler.update()
+            else:
+                self.trainer.optimizer.step()
 
     def before_train_iter(self):
         if self.trainer.iter == 0:

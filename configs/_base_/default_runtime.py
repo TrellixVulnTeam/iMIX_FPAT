@@ -1,6 +1,6 @@
 # eval_iter_period = 500
 # checkpoint_config = dict(iter_period=eval_iter_period)
-log_config = dict(period=5)  # PeriodicLogger parameter
+log_config = dict(period=1)  # PeriodicLogger parameter
 work_dir = './work_dirs'  # the dir to save logs and models
 
 # load_from = '/home/datasets/mix_data/model/visdial_model_imix/vqa_weights.pth'

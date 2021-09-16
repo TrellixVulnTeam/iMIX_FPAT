@@ -1,6 +1,8 @@
 imix.evaluation package
 =======================
 
+Submodules
+----------
 
 imix.evaluation.dataset\_evaluator module
 -----------------------------------------
@@ -26,3 +28,10 @@ imix.evaluation.metric module
    :undoc-members:
    :show-inheritance:
 
+Module contents
+---------------
+
+.. automodule:: imix.evaluation
+   :members:
+   :undoc-members:
+   :show-inheritance:

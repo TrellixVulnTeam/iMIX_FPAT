@@ -136,7 +136,10 @@ class VILBERT(BaseModel):
         cfg_type = self.config.TASKS[task_id]['type']
 
         if cfg_type == 'VL-classifier':
-            batch_score = compute_score_with_logits(vil_prediction, target).sum()
+            if target is None:
+                batch_score = None
+            else:
+                batch_score = compute_score_with_logits(vil_prediction, target).sum()
             pred = vil_prediction
 
         elif cfg_type == 'VL-classifier-GQA':
@@ -247,10 +250,13 @@ class VILBERT(BaseModel):
 
         output_dict = self.run_one_time(task_id, data)
 
-        model_output[task_id] = {
-            'batch_score': output_dict.batch_score,
-            'batch_size': output_dict.batch_size,
-        }
+        if output_dict.target is None:
+            model_output[task_id] = {'scores': output_dict.scores}
+        else:
+            model_output[task_id] = {
+                'batch_score': output_dict.batch_score,
+                'batch_size': output_dict.batch_size,
+            }
 
         # # update the multi-task scheduler.
         # self.task_stop_controller[task_id].step(
@@ -261,7 +267,12 @@ class VILBERT(BaseModel):
         return model_output[task_id]
 
     def get_image_and_text_features(self, task_id, data):
+
+        def convert_tensor(data):
+            return data if len(data) else None
+
         batch = tuple(t.cuda(device=self.device, non_blocking=True) for t in data)
+        batch = [convert_tensor(d) for d in batch]
 
         if task_id == 'TASK4' or task_id == 'TASK17':
             (features, spatials, image_mask, question, target, input_mask, segment_ids, multiple_choice_ids,

@@ -83,67 +83,33 @@ class VisDialMetric(BaseMetric):
     metric_name = 'visual_dialog_metric'
 
     def __init__(self, *args, **kwargs):
-        self.all_metrics = {}
-        self.predictions = {}
-        self._rank_list = []
-        self._ndcg_numerator = 0.0
-        self._ndcg_denominator = 0.0
+        from imix.utils.third_party_libs import SparseGTMetrics, NDCG
+        import logging
+
+        self.sparse_metrics = SparseGTMetrics()
+        self.ndcg = NDCG()
+        self.logger = logging.getLogger(__name__)
+        self.desired_keys = ['r@1', 'r@5', 'r@10', 'mean', 'mrr', 'ndcg']
 
     def calculate(self, predictions, labels, **kwargs):
-        self.predictions = predictions
-        for p in predictions:
-            self._rank_list.extend(p['sparse_r'])
-            self._ndcg_numerator += p['ndcg_n']
-            self._ndcg_denominator += p['ndcg_d']
-        self.all_metrics.update(self.sparse_retrieve())
-        self.all_metrics.update(self.ndcg_retrieve())
+        assert len(predictions) == len(labels)
 
-        return self.all_metrics
+        for p, l in zip(predictions, labels):
+            if list(p.keys())[0] == list(l.keys())[0]:
+                key = list(p.keys())[0]
+                if key == 'sparse_metrics':
+                    self.sparse_metrics.observe(p[key], l[key])
+                elif key == 'ndcg':
+                    self.ndcg.observe(p[key], l[key])
+                else:
+                    pass
+            else:
+                self.logger.info(f'predictions.key:{list(p.keys())[0]} is not equal to  labels.key{list(l.keys())[0]}')
 
-    def sparse_retrieve(self):
+        all_metrics = self.sparse_metrics.retrieve(reset=True)
+        all_metrics.update(self.ndcg.retrieve(reset=True))
 
-        # _rank_list for p1 in predictions for _rank_list in p1['sparse_r']]
-        # _rank_list = self.predictions['sparse_r']
-        num_examples = len(self._rank_list)
-        if num_examples > 0:
-            # convert to numpy array for easy calculation.
-            __rank_list = torch.tensor(self._rank_list).float()
-            metrics = {
-                'r@1': torch.mean((__rank_list <= 1).float()).item(),
-                'r@5': torch.mean((__rank_list <= 5).float()).item(),
-                'r@10': torch.mean((__rank_list <= 10).float()).item(),
-                'mean': torch.mean(__rank_list).item(),
-                'mrr': torch.mean(__rank_list.reciprocal()).item()
-            }
-            # # add round metrics
-            # _rank_list_rnd = np.concatenate(self._rank_list_rnd)
-            # _rank_list_rnd = _rank_list_rnd.astype(float)
-            # r_1_rnd = np.mean(_rank_list_rnd <= 1, axis=0)
-            # r_5_rnd = np.mean(_rank_list_rnd <= 5, axis=0)
-            # r_10_rnd = np.mean(_rank_list_rnd <= 10, axis=0)
-            # mean_rnd = np.mean(_rank_list_rnd, axis=0)
-            # mrr_rnd = np.mean(np.reciprocal(_rank_list_rnd), axis=0)
-            #
-            # for rnd in range(1, self.num_rounds + 1):
-            #     metrics["r_1" + "_round_" + str(rnd)] = r_1_rnd[rnd-1]
-            #     metrics["r_5" + "_round_" + str(rnd)] = r_5_rnd[rnd-1]
-            #     metrics["r_10" + "_round_" + str(rnd)] = r_10_rnd[rnd-1]
-            #     metrics["mean" + "_round_" + str(rnd)] = mean_rnd[rnd-1]
-            #     metrics["mrr" + "_round_" + str(rnd)] = mrr_rnd[rnd-1]
-        else:
-            metrics = {}
-
-        return metrics
-
-    def ndcg_retrieve(self):
-        # _ndcg_denominator = sum(self.predictions['ndcg_d'])
-        # _ndcg_numerator = sum(self.predictions['ndcg_n'])
-        if self._ndcg_denominator > 0:
-            metrics = {'ndcg': float(self._ndcg_numerator / self._ndcg_denominator)}
-        else:
-            metrics = {}
-
-        return metrics
+        return {key: all_metrics[key] for key in self.desired_keys}
 
 
 @METRICS.register_module()
@@ -346,13 +312,38 @@ class TextVQAAccuracyMetric(BaseMetric):
     metric_name = 'text_vqa_accuracy_metric'
 
     def __init__(self, *args, **kwargs):
-        pass
+        from imix.utils.third_party_libs import EvalAIAnswerProcessor
+        self.answer_processor = EvalAIAnswerProcessor()
 
     def calculate(self, predictions: torch.Tensor, labels: torch.Tensor, **kwargs):
-        pass
+        pred_scores = []
+        for pred_answer, gt_answer in zip(predictions, labels):
+            pred_answer = self.answer_processor(pred_answer)
+            unique_answer_scores = self._compute_answer_scores(gt_answer)
+            score = unique_answer_scores.get(pred_answer, 0.0)
+            pred_scores.append(score)
 
-    def data_pre_process(self, model_outputs, labels, *args, **kwargs):
-        pass
+        accuracy = sum(pred_scores) / len(pred_scores)
+        return accuracy
+
+    def _compute_answer_scores(self, raw_answers):
+        """compute the accuracy (soft score) of human answers."""
+        answers = [self.answer_processor(a) for a in raw_answers]
+        assert len(answers) == 10
+        gt_answers = list(enumerate(answers))
+        unique_answers = set(answers)
+        unique_answer_scores = {}
+
+        for unique_answer in unique_answers:
+            accs = []
+            for gt_answer in gt_answers:
+                other_answers = [item for item in gt_answers if item != gt_answer]
+                matching_answers = [item for item in other_answers if item[1] == unique_answer]
+                acc = min(1, float(len(matching_answers)) / 3)
+                accs.append(acc)
+            unique_answer_scores[unique_answer] = sum(accs) / len(accs)
+
+        return unique_answer_scores
 
 
 @METRICS.register_module()

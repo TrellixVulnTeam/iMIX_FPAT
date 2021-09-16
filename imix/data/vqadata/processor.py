@@ -1,25 +1,10 @@
 import torch
-from imix.utils.registry import Registry, build_from_cfg
-from imix.models.builder import EMBEDDING
+from ..builder import PROCESSOR
 from .baseprocessor import BaseProcessor
-
-VOCAB = Registry('vocab')
-
-
-def build_vocab(cfg):
-    """Build vocab."""
-    return build_from_cfg(cfg, VOCAB)
+from ..builder import build_vocab, build_preprocessor
 
 
-PREPROCESSOR = Registry('preprocessor')
-
-
-def build_preprocessor(cfg):
-    """Build preprocessor."""
-    return build_from_cfg(cfg, PREPROCESSOR)
-
-
-@EMBEDDING.register_module()
+@PROCESSOR.register_module()
 class Processor(BaseProcessor):
     """Tokenizes a sentence and processes it.
 
@@ -36,7 +21,7 @@ class Processor(BaseProcessor):
         return {'text': self.tokenizer(item['text'], *args, **kwargs)}
 
 
-@EMBEDDING.register_module()
+@PROCESSOR.register_module()
 class VocabProcessor(BaseProcessor):
     """Use VocabProcessor when you have vocab file and you want to process
     words to indices. Expects UNK token as "<unk>" and pads sentences using

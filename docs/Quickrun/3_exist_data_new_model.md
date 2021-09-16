@@ -11,7 +11,7 @@ The basic steps are as below:
 
 The steps are as follows (i.e. VQA dataset):
 
-- download the feature and annotation files like `train2014`, `imdb_train2014.npy`, `glove.6B.50d.txt.pt` and so on. You can download the data file according to the original paper or source code of [MCAN](https://github.com/inspur-hsslab/iMIX/tree/master/configs/mcan);
+- download the feature and annotation files like `train2014`, `imdb_train2014.npy`, `glove.6B.50d.txt.pt` and so on. You can download the data file according to the original paper or source code of [MCAN](https://github.com/inspur-hsslab/iMIX/tree/master/configs/mcan/MCAN.md);
 
 - put all those files outside the project directory and symlink the dataset root to `imix/configs/_base_/datasets/vqa_dataset_grid_data.py` ;
 

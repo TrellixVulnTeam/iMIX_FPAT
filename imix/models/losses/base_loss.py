@@ -11,47 +11,15 @@ from ..builder import build_loss
 class BaseLoss(torch.nn.Module, metaclass=ABCMeta):
     loss_name = 'base_loss'
 
-    def __init__(self, loss_name, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.loss_name = loss_name
 
     @abstractmethod
     def forward(self, *args, **kwargs):
-        # return NotImplementedError
         pass
 
     def __str__(self):
         return self.loss_name
-
-    # def loss(self, *args, **kwargs):
-    #     pass
-
-    # def loss(self, scores, targets):
-    #     losses = {str(self): self.forward(scores, targets)}
-    #     loss, losses_log = self.parse_losses(losses=losses)
-    #     output = losses_log
-    #     output['loss'] = loss
-    #     return output
-
-    # def __call__(self, *args, **kwargs):
-    #     pass
-
-
-# class BaseLoss(metaclass=ABCMeta):
-#     loss_name = 'base_loss'
-#
-#     @abstractmethod
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.loss_fn = None
-#
-#     def forward(self, model_output):
-#         # return NotImplementedError
-#         predict_scores, target = model_output['scores'], model_output['target']
-#         return self.loss_fn(predict_scores, target)
-#
-#     def __str__(self):
-#         return self.loss_name
 
 
 class Losser:

@@ -34,7 +34,7 @@ vqa_reader_test_cfg = dict(
 
 train_data = dict(
     samples_per_gpu=TASKS['TASK' + task_ids]['per_gpu_train_batch_size'],
-    workers_per_gpu=4,
+    workers_per_gpu=0,
     data=dict(
         type=dataset_type,
         reader=vqa_reader_train_cfg,

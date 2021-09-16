@@ -37,7 +37,7 @@ model = dict(
 loss = dict(type='LogitBinaryCrossEntropy')
 
 optimizer = dict(
-    type='BertAdam',
+    type='BertAdam1',
     lr=5e-5,
     weight_decay=0.01,
     eps=1e-6,

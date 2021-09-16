@@ -321,6 +321,14 @@ class OscarOptimizerConstructor(DefaultOptimizerConstructor):
 
 
 @OPTIMIZER_BUILDERS.register_module()
+class OscarPreTrainOptimizerConstructor(OscarOptimizerConstructor):
+
+    def __init__(self, optimizer_cfg, paramwise_cfg=None):
+        super().__init__(optimizer_cfg, paramwise_cfg)
+        self.no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+
+
+@OPTIMIZER_BUILDERS.register_module()
 class DevlbertOptimizerConstructor(VilbertOptimizerConstructor):
 
     def __init__(self, optimizer_cfg, paramwise_cfg=None):

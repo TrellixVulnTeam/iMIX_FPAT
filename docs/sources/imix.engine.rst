@@ -3,6 +3,7 @@ imix.engine package
 
 
 .. toctree::
+   :maxdepth: 4
 
    imix.engine.hooks
 
@@ -30,4 +31,3 @@ imix.engine.organizer module
    :members:
    :undoc-members:
    :show-inheritance:
-

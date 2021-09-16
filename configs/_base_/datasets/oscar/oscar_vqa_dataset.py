@@ -61,7 +61,7 @@ train_data = dict(
         type=dataset_type,
         reader=vqa_reader_train_cfg,
     ),
-    sampler='DistributedSampler',
+    # sampler='DistributedSampler',
 )
 
 test_data = dict(

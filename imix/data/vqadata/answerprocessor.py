@@ -1,12 +1,9 @@
 import torch
-from imix.utils.registry import Registry, build_from_cfg
-import os
-from imix.models.builder import EMBEDDING
 from .baseprocessor import BaseProcessor
 from imix.utils.third_party_libs import PathManager
 import re
+from ..builder import build_vocab, build_preprocessor, PROCESSOR
 
-VOCAB = Registry('vocab')
 SENTENCE_SPLIT_REGEX = re.compile(r'(\W+)')
 
 
@@ -28,19 +25,6 @@ def tokenize(sentence, regex=SENTENCE_SPLIT_REGEX, keep=None, remove=None):
     return tokens
 
 
-def build_vocab(cfg):
-    """Build vocab."""
-    return build_from_cfg(cfg, VOCAB)
-
-
-PREPROCESSOR = Registry('preprocessor')
-
-
-def build_preprocessor(cfg):
-    """Build preprocessor."""
-    return build_from_cfg(cfg, PREPROCESSOR)
-
-
 def load_str_list(fname):
     with PathManager.open(fname) as f:
         lines = f.readlines()
@@ -48,7 +32,7 @@ def load_str_list(fname):
     return lines
 
 
-@EMBEDDING.register_module()
+@PROCESSOR.register_module()
 class SimpleWordProcessor(BaseProcessor):
     """Tokenizes a word and processes it.
 
@@ -65,74 +49,7 @@ class SimpleWordProcessor(BaseProcessor):
         return {'text': self.tokenizer(item['text'], *args, **kwargs)}
 
 
-@EMBEDDING.register_module()
-class VocabDict:
-    UNK_TOKEN = '<unk>'
-    PAD_TOKEN = '<pad>'
-    START_TOKEN = '<s>'
-    END_TOKEN = '</s>'
-
-    PAD_INDEX = 0
-    SOS_INDEX = 1
-    EOS_INDEX = 2
-    UNK_INDEX = 3
-
-    def __init__(self, vocab_file, data_dir=None):
-        if not os.path.isabs(vocab_file) and data_dir is not None:
-            vocab_file = os.path.abspath(os.path.join(data_dir, vocab_file))
-
-        if not PathManager.exists(vocab_file):
-            raise RuntimeError(f"Vocab file {vocab_file} for vocab dict doesn't exist")
-
-        self.word_list = load_str_list(vocab_file)
-        self._build()
-
-    def _build(self):
-        if self.UNK_TOKEN not in self.word_list:
-            self.word_list = [self.UNK_TOKEN] + self.word_list
-
-        self.word2idx_dict = {w: n_w for n_w, w in enumerate(self.word_list)}
-
-        # String (word) to integer (index) dict mapping
-        self.stoi = self.word2idx_dict
-        # Integer to string (word) reverse mapping
-        self.itos = self.word_list
-        self.num_vocab = len(self.word_list)
-
-        self.UNK_INDEX = (self.word2idx_dict[self.UNK_TOKEN] if self.UNK_TOKEN in self.word2idx_dict else None)
-
-        self.PAD_INDEX = (self.word2idx_dict[self.PAD_TOKEN] if self.PAD_TOKEN in self.word2idx_dict else None)
-
-    def idx2word(self, n_w):
-        return self.word_list[n_w]
-
-    def __len__(self):
-        return len(self.word_list)
-
-    def get_size(self):
-        return len(self.word_list)
-
-    def get_unk_index(self):
-        return self.UNK_INDEX
-
-    def get_unk_token(self):
-        return self.UNK_TOKEN
-
-    def word2idx(self, w):
-        if w in self.word2idx_dict:
-            return self.word2idx_dict[w]
-        elif self.UNK_INDEX is not None:
-            return self.UNK_INDEX
-        else:
-            raise ValueError('word %s not in dictionary \
-                             (while dictionary does not contain <unk>)' % w)
-
-    def tokenize_and_index(self, sentence):
-        inds = [self.word2idx(w) for w in tokenize(sentence)]
-        return inds
-
-
-@EMBEDDING.register_module()
+@PROCESSOR.register_module()
 class VQAAnswerProcessor(BaseProcessor):
     """Processor for generating answer scores for answers passed using VQA
     accuracy formula. Using VocabDict class to represent answer vocabulary, so
@@ -163,7 +80,7 @@ class VQAAnswerProcessor(BaseProcessor):
 
         self.preprocessor = build_preprocessor(preprocessor)
 
-        self.preprocessor = None
+        # self.preprocessor = None
 
         # if hasattr(config, "preprocessor"):
         #     self.preprocessor = Processor(config.preprocessor)

@@ -5,11 +5,11 @@ from imix.utils.registry import Registry, build_from_cfg
 from .sampler import build_sampler, build_batch_sampler
 from typing import Optional
 import torch
+import logging
 
 VOCAB = Registry('vocab')
 PREPROCESSOR = Registry('preprocessor')
 DATASETS = Registry('dataset')
-
 PROCESSOR = Registry('processor')
 
 
@@ -43,9 +43,20 @@ def build_preprocessor(cfg):
     return build_from_cfg(cfg, PREPROCESSOR)
 
 
+def build_processor(cfg, defualt_args=None):
+    return build_from_cfg(cfg, PROCESSOR, defualt_args)
+
+
 def build_dataset(dataset_cfg, default_args=None):
-    dataset = build_from_cfg(dataset_cfg, DATASETS, default_args)
-    return dataset
+    return build_from_cfg(dataset_cfg, DATASETS, default_args)
+
+
+class BatchCollator:
+    """From a list of samples from the dataset, returns the images and
+    targets."""
+
+    def __call__(self, batch):
+        return list(zip(*batch))
 
 
 def build_data_loader_by_epoch(dataset, cfg, is_training=True):
@@ -60,7 +71,7 @@ def build_data_loader_by_epoch(dataset, cfg, is_training=True):
         params.sampler_cfg = getattr(data_cfg, 'sampler', None)
         params.batch_sampler_cfg = getattr(data_cfg, 'batch_sampler', None)
         params.shuffle = getattr(data_cfg, 'shuffle', False)
-        params.collate_fn = getattr(dataset, 'collate_fn', None)
+        params.collate_fn = getattr(data_cfg, 'collate_fn', None)
         params.worker_init_fn = worker_init_fn
 
         return params
@@ -72,7 +83,7 @@ def build_data_loader_by_epoch(dataset, cfg, is_training=True):
         'dataset': dataset,
         'pin_memory': params.pin_memory,
         'num_workers': params.num_workers,
-        'collate_fn': params.collate_fn,
+        'collate_fn': eval(params.collate_fn) if params.collate_fn else None,
     }
 
     if batch_sampler_cfg:
@@ -110,6 +121,11 @@ def build_imix_train_loader(cfg):
     """
 
     dataset = build_dataset(cfg.train_data.data)
+    if not hasattr(cfg.train_data, 'shuffle') and getattr(cfg.train_data, 'sampler', None) != 'RandomSampler':
+        cfg.train_data.shuffle = True
+        logger = logging.getLogger(__name__)
+        logger.info('the shuffle value of the train_data set to True')
+
     return build_data_loader_by_epoch(dataset, cfg, is_training=True)
 
 

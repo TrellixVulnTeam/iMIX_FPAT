@@ -6,7 +6,7 @@ The basic steps are as below:
 2. Prepare other necessary configs;
 3. Train, test, inference models on the customized dataset.
 
-In this part, we use [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert) model and VQA task as an example.
+In this part, we use [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert/LXMERT.md) model and VQA task as an example.
 
 ## Prepare the customized dataset
 
@@ -16,7 +16,7 @@ We provide you with two choices when you customize dataset: use iMIX or directly
 
 In iMIX, we use the extracted feature files refer to the source code papers(i.e. VQA dataset).
 
-Download the feature and annotation files like `train.json`, `trainval_ans2label.json`, `train2014_obj36.tsv` and so on. You can download the data file according to the original paper or source code of [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert).
+Download the feature and annotation files like `train.json`, `trainval_ans2label.json`, `train2014_obj36.tsv` and so on. You can download the data file according to the original paper or source code of [LXMERT](https://github.com/inspur-hsslab/iMIX/tree/master/configs/lxmert/LXMERT.md).
 
 Put all those files outside the project directory and symlink the dataset root to `imix/configs/_base_/datasets/lxmert/lxmert_vqa.py`
 

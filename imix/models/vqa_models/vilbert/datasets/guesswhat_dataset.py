@@ -96,7 +96,7 @@ class GuessWhatDataset(Dataset):
         self._padding_index = padding_index
         # cache_path = os.path.join(dataroot, 'cache', task + '_' + split + '_' + str(max_seq_length) + '.pkl')
 
-        # jinliang: GuessWhat_xxx_25.pkl -> GuessWhat_xxx_25_tolist.pkl
+        # GuessWhat_xxx_25.pkl -> GuessWhat_xxx_25_tolist.pkl
         cache_path = os.path.join(dataroot, 'cache',
                                   task + '_' + split + '_' + str(max_seq_length) + '_tolist' + '.pkl')
         if not os.path.exists(cache_path):

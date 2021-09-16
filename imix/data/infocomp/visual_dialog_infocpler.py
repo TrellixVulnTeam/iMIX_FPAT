@@ -3,10 +3,8 @@ from transformers.tokenization_bert import BertTokenizer
 from ..utils.data_utils import encode_input
 import random
 import torch
-
-random.seed(1)
-
-# random.seed('mark')
+from ..vqadata.stream import ItemFeature
+from imix.utils.config import imixEasyDict
 
 
 class VisDiaInfoCpler:
@@ -25,13 +23,15 @@ class VisDiaInfoCpler:
         self.max_sequence_len = cfg.get('max_sequence_len', 256)
         self.mask_probability = cfg.get('mask_probability', 0.15)
         self.visdial_tot_rounds = cfg.get('visdial_tot_rounds', 11)
+        self.tokenizer_path = cfg.get('tokenizer', 'bert-base-uncased')
+        if isinstance(self.tokenizer_path, imixEasyDict):
+            self.tokenizer_path = self.tokenizer_path.path
 
         self.init_tokens()
 
     def init_tokens(self):
         # self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.tokenizer = BertTokenizer.from_pretrained(
-            '/home/datasets/mix_data/torch/pytorch_transformers/bert/bert-base-uncased/bert-base-uncased-vocab.txt')
+        self.tokenizer = BertTokenizer.from_pretrained(pretrained_model_name_or_path=self.tokenizer_path)
         tokens = ['[CLS]', '[MASK]', '[SEP]']
         indexed_tokens = self.tokenizer.convert_tokens_to_ids(tokens)
         self.CLS = indexed_tokens[0]
@@ -261,7 +261,7 @@ class VisDiaInfoCpler:
                     self.SEP,
                     self.MASK,
                     max_seq_len=self.max_sequence_len,
-                    mask_prob=0)
+                    mask_prob=self.mask_probability)
 
                 tokens_all_rnd.append(tokens)
                 mask_all_rnd.append(mask)
@@ -372,3 +372,82 @@ class VisDiaInfoCpler:
         item_feature.update(language)
 
         return item_feature
+
+
+class VisualDialogDenseInfoCpler(VisDiaInfoCpler):
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+    def complete_info(self, item_feature, split='train'):
+        cur_rnd_utterance = [self.tokenizer.encode(item_feature.caption)]
+        cur_rounds = item_feature.round_id
+
+        for rnd, utterance in enumerate(item_feature.dialog[:cur_rounds]):
+            cur_rnd_utterance.append(self.tokenizer.encode(utterance['question']))
+            if rnd != cur_rounds - 1:
+                cur_rnd_utterance.append(self.tokenizer.encode(utterance['answer']))
+
+        options_all = []
+        for answer in item_feature.dialog[cur_rounds - 1]['answer_options']:
+            cur_option = cur_rnd_utterance.copy()
+            cur_option.append(self.tokenizer.encode(answer))
+            options_all.append(cur_option)
+            assert len(cur_option) == 2 * cur_rounds + 1
+
+        gt_option = item_feature.dialog[cur_rounds - 1]['gt_index']
+
+        tokens_all = []
+        mask_all = []
+        segments_all = []
+        sep_indices_all = []
+        hist_len_all = []
+
+        for _, option in enumerate(options_all):
+            option, start_segment = super().prune_rounds(option, self.visual_dialog_tot_rounds)
+            tokens, segments, sep_indices, mask = encode_input(
+                option,
+                start_segment,
+                self.CLS,
+                self.SEP,
+                self.MASK,
+                max_seq_len=self.max_sequence_len,
+                mask_prob=self.mask_probability)
+
+            tokens_all.append(tokens)
+            mask_all.append(mask)
+            segments_all.append(segments)
+            sep_indices_all.append(sep_indices)
+            hist_len_all.append(torch.LongTensor([len(option) - 1]))
+
+        tokens_all = torch.cat(tokens_all, 0)
+        mask_all = torch.cat(mask_all, 0)
+        segments_all = torch.cat(segments_all, 0)
+        sep_indices_all = torch.cat(sep_indices_all, 0)
+        hist_len_all = torch.cat(hist_len_all, 0)
+
+        item = ItemFeature()
+        item['tokens'] = tokens_all.unsqueeze(0)
+        item['segments'] = segments_all.unsqueeze(0)
+        item['sep_indices'] = sep_indices_all.unsqueeze(0)
+        item['mask'] = mask_all.unsqueeze(0)
+        item['hist_len'] = hist_len_all.unsqueeze(0)
+        item['image_id'] = torch.LongTensor([item_feature.image_id])
+
+        item['image_feat'] = item_feature.image_feat
+        item['image_loc'] = item_feature.image_loc
+        item['image_mask'] = item_feature.image_mask
+        item['image_target'] = item_feature.image_target
+        item['image_label'] = item_feature.image_label
+
+        # add dense annotation fields
+        item['gt_relevance_round_id'] = torch.LongTensor([cur_rounds])
+        item['gt_relevance'] = torch.Tensor(item_feature['relevance'])
+        item['gt_option'] = torch.LongTensor([gt_option])
+
+        # add next sentence labels for training with the nsp loss as well
+        nsp_labels = torch.ones(*tokens_all.unsqueeze(0).shape[:-1])
+        nsp_labels[:, gt_option] = 0
+        item['next_sentence_labels'] = nsp_labels.long()
+
+        return item

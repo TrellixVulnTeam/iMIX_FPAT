@@ -7,23 +7,6 @@ from ..builder import DATASETS
 from ..infocomp.vqa_infocpler import VQAInfoCpler
 from ..reader.vqa_reader import VQAReader
 
-# VQA_PATH_CONFIG = yaml.load(open("datasets/dataset_vqa.yaml"))["dataset_configs"]
-
-# @DATASETS.register_module()
-# class VQADATASET(Dataset):
-#     def __init__(self, splits):
-#         self.reader = VQAReader(VQA_PATH_CONFIG, splits)
-#         self.infocpler = VQAInfoCpler(VQA_PATH_CONFIG)
-#
-#     def __len__(self):
-#         return len(self.reader)
-#
-#     def __getitem__(self, item):
-#
-#         item_feature = self.reader[item]
-#         item_feature = self.infocpler.completeInfo(item_feature)
-#         return item_feature.feature, item_feature.input_ids, item_feature.answers_scores, item_feature.input_mask
-
 
 @DATASETS.register_module()
 class VQADATASET(Dataset):
@@ -64,5 +47,3 @@ class VQADATASET(Dataset):
         if 'test' in self._split or 'oneval' in self._split:
             item['quesid2ans'] = self.infocpler.qa_id2ans
         return item
-
-        # return item_feature

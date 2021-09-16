@@ -45,7 +45,8 @@ class VisDiaDatasetConvert:
     def decode_val_annotation(self, json_data):
         return self.decode_train_annotation(json_data)
 
-    def decode_test_nnotation(self, json_data):
+    @staticmethod
+    def decode_test_nnotation(json_data):
         data = json_data['data']
         split = json_data['split']
         version = json_data['version']
@@ -92,7 +93,8 @@ class VisDiaDatasetConvert:
 
         return vd_annotation
 
-    def decode_train_annotation(self, json_data):
+    @staticmethod
+    def decode_train_annotation(json_data):
         data = json_data['data']
         split = json_data['split']
         version = json_data['version']
@@ -128,15 +130,32 @@ class VisDiaDatasetConvert:
 
         return vd_annotation
 
-    def read_json(self, file):
+    @staticmethod
+    def read_json(file):
         with open(file) as f:
             return json.load(f)
 
-    def save_npy_file(self, data, save_path):
+    @staticmethod
+    def save_npy_file(data, save_path):
         np.save(save_path, data)
 
 
-if __name__ == '__main__':
+def build_small_dataset(size=128):
+    dir = '/home/datasets/mix_data/iMIX/data/datasets/visdial_data/annotations_npy'
+    all_files = os.listdir(dir)
+    files = [file for file in all_files if file.find('test') == -1]
+    for file in files:
+        file_name = os.path.join(dir, file)
+        if file_name.endswith('.npy'):
+            if file.find('val') != -1:
+                size = int(size / 2)
+            data = np.load(file_name, allow_pickle=True)
+            small_file_name = os.path.join(file_name.split('.npy')[0] + f'_small{size}.npy')
+            small_data = data[:size + 1]
+            np.save(small_file_name, small_data)
+
+
+def data_convert():
     data_root = '/home/datasets/mix_data/iMIX/data/datasets/visdial_data/'
     json_path = os.path.join(data_root, 'annotations')
     save_path = os.path.join(data_root, 'annotations_npy_1')
@@ -144,3 +163,23 @@ if __name__ == '__main__':
     json_files = list(os.path.join(json_path, json_file) for json_file in json_files)
     vdc = VisDiaDatasetConvert(json_files=json_files, save_dir=save_path)
     vdc.convert()
+
+
+def convert_train_dense():
+    data_root = '/home/datasets/mix_data/iMIX/'
+    annotation_path = 'data/datasets/visdial_data/annotations_npy/'
+    json_file = os.path.join(data_root, annotation_path, 'visdial_1.0_train_dense_processed.json')
+
+    # json_dense = os.path.join(data_root, annotation_path, 'visdial_1.0_train_dense_annotations_processed.json')
+    # j = json.load(open(json_dense, 'r'))
+
+    json_data = VisDiaDatasetConvert.read_json(file=json_file)
+    data = VisDiaDatasetConvert.decode_train_annotation(json_data)
+    save_name = json_file.replace('.json', '.npy')
+    VisDiaDatasetConvert.save_npy_file(data, save_path=save_name)
+
+
+if __name__ == '__main__':
+    # data_convert()
+    # build_small_dataset()
+    convert_train_dense()

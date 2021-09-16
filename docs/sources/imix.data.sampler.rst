@@ -1,6 +1,8 @@
 imix.data.sampler package
 =========================
 
+Submodules
+----------
 
 imix.data.sampler.builder module
 --------------------------------
@@ -26,3 +28,10 @@ imix.data.sampler.uniter\_sampler module
    :undoc-members:
    :show-inheritance:
 
+Module contents
+---------------
+
+.. automodule:: imix.data.sampler
+   :members:
+   :undoc-members:
+   :show-inheritance:

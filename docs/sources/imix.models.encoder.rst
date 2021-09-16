@@ -36,6 +36,14 @@ imix.models.encoder.textbert module
    :undoc-members:
    :show-inheritance:
 
+imix.models.encoder.uniter module
+---------------------------------
+
+.. automodule:: imix.models.encoder.uniter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 imix.models.encoder.visdiag\_lstm module
 ----------------------------------------
 

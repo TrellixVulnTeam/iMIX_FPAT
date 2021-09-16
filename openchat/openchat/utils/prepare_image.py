@@ -6,7 +6,6 @@ import cv2
 
 
 def transform_image(image_bytes, target_size):
-
     trans = T.Compose(
         [T.Resize(255),
          T.CenterCrop(244),
@@ -59,3 +58,14 @@ def detect_objects_on_single_image(model, transforms, cv2_img):
         } for box, cls, score, attr, attr_conf, feat in zip(boxes, classes, scores, attr_labels, attr_scores, feats)]
 
     return [{'rect': box, 'class': cls, 'conf': score} for box, cls, score in zip(boxes, classes, scores)]
+
+
+def extract_visual_feature_on_single_image(model, transforms, img_data):
+    img_input = cv2Img_to_Image(img_data)
+    img_input, _ = transforms(img_input, target=None)
+    img_input = img_input.to(model.device)
+    img_h, img_w, _ = img_data.shape
+
+    with torch.no_grad():
+        prediction = model(img_input)
+        return prediction[0].resize((img_w, img_h))
